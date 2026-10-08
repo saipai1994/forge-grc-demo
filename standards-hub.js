@@ -17,8 +17,8 @@ const PACKS=[
  ['Telecommunications','Telecom security emphasises network integrity and service availability.',['iso27001','nist-csf2','etsi','gsma']],
  ['Energy & Utilities','Critical infrastructure protection is the primary focus.',['nerc-cip','iec62443','nist-800-82','iso27001']],
  ['Data Privacy (cross-industry)','Privacy frameworks apply across all industries.',['gdpr','iso27701','dpdp','ccpa']]];
-G.PACKS=PACKS;
-const st=G.UI.hub={pack:'All',q:''};
+(LIB.packs||[]).forEach(p=>{const e=PACKS.find(x=>x[0]===p[0]);if(e){e[2]=[...new Set([...e[2],...p[2]])];if(p[1])e[1]=p[1]}else PACKS.push(p)});G.PACKS=PACKS;
+const st=G.UI.hub={pack:PACKS.some(p=>p[0]===P.pack)?P.pack:'All',q:''};
 const cl=f=>f.clauses||[],nObl=f=>f.obl.length;
 const adopted=id=>(S().obl||[]).some(o=>o.fw===id),clAdopted=id=>(S().obl||[]).some(o=>o.fw===id&&o.lvl==='clause');
 const nextN=()=>(S().obl||[]).reduce((m,o)=>Math.max(m,+o.id.slice(3)||0),0)+1;
