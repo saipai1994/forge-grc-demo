@@ -49,11 +49,15 @@ const SEEDS={
   dpia:[['DPIA-01','PA-003','Face-recognition access at the main gate','High','Draft','Sam Rivera','2026-11-05',[['Assess necessity and alternatives',false],['Define retention and access controls for biometric data',false]]]]}
 };
 const slaDays=(regime,type)=>type==='Grievance'?90:({DPDP:90,GDPR:30,CCPA:45}[regime]||30);
-G.seeders.priv=pid=>{const d=SEEDS[pid]||SEEDS.general;return{
+const KIT=window.GRC_KIT;
+function privExtra(o,pid){const ex=P.extras||{};if(!ex.ropa)return o;const noun=P.noun||'Customer',sw=t=>String(t).replace(/Customer/g,noun);
+ o.ropa=ex.ropa.map((r,i)=>({id:'PA-'+String(i+1).padStart(3,'0'),name:r[0],purpose:r[1],basis:r[2],categories:r[3],subjects:r[4],recipients:r[5],transfers:'None',retention:r[6],owner:KIT.PEOPLE[r[7]],system:'—',dpia:i===0?'Required':'Not required',last:KIT.off(-120-i*95)}));
+ o.dsr.forEach(x=>{x.subject=sw(x.subject)});o.breach.forEach(x=>{x.title=sw(x.title);x.data=sw(x.data)});const ids=new Set(o.ropa.map(r=>r.id));o.dpia=o.dpia.filter(x=>ids.has(x.activity));return o}
+G.seeders.priv=pid=>{const d=SEEDS[pid]||SEEDS.general;return privExtra({
  ropa:d.ropa.map(r=>({id:r[0],name:r[1],purpose:r[2],basis:r[3],categories:r[4],subjects:r[5],recipients:r[6],transfers:r[7],retention:r[8],owner:r[9],system:r[10],dpia:r[11],last:r[12]})),
  dsr:d.dsr.map(r=>({id:r[0],type:r[1],regime:r[2],subject:r[3],received:r[4],status:r[5],owner:r[6],channel:r[7],due:addDays(r[4],slaDays(r[2],r[1])),ext:false,notes:'',done:r[5]==='Completed'?addDays(r[4],r[3]?20:20):''})),
  breach:d.breach.map(r=>({id:r[0],title:r[1],detected:r[2],status:r[3],sev:r[4],records:r[5],data:r[6],cause:r[7],regimes:r[8],notified:r[9],owner:r[10],individuals:r[3]==='Reported'||r[3]==='Closed',notes:''})),
- dpia:d.dpia.map(r=>({id:r[0],activity:r[1],title:r[2],risk:r[3],status:r[4],owner:r[5],due:r[6],mit:r[7].map(m=>({text:m[0],done:m[1]}))}))}};
+ dpia:d.dpia.map(r=>({id:r[0],activity:r[1],title:r[2],risk:r[3],status:r[4],owner:r[5],due:r[6],mit:r[7].map(m=>({text:m[0],done:m[1]}))}))},pid)};
 const R={
  bfsi:{
   ibs:[['IBS-01','Retail payments (UPI / IMPS / cards)','Jordan Lee','Critical',4,3.2,'2026-05-20','Within tolerance',['V-003','V-001'],['IT-04','BC-02'],['R-105','R-110']],
@@ -75,7 +79,12 @@ const R={
    ['RT-05','Quarterly vulnerability scan','Vulnerability scan','IBS-02','2026-08-28','Monthly','Failed',14,'Sam Rivera'],
    ['RT-06','Threat-led penetration test (TLPT)','TLPT','IBS-01','2024-11-20','Annual','Passed with findings',2,'Sam Rivera']]}
 };
-G.seeders.res=pid=>{const d=R[pid]||{ibs:[],ict:[],inc:[],test:[]};return{
+function deriveRes(){const bia=(P.extras&&P.extras.bia)||[],vs=(S().vendors||[]),t1=vs.filter(v=>v.tier===1),fd=['insurance','fintech'].includes(P.id);
+ const ibs=bia.map((b,i)=>['IBS-0'+(i+1),b[0],KIT.PEOPLE[b[1]],b[2],Math.max(1,Math.round(b[4])),i===0?+(b[4]*0.8).toFixed(1):i===1?+(b[4]*1.6).toFixed(1):0,i<2?'2026-05-20':'',i===0?'Within tolerance':i===1?'Breached':'Not tested',t1.slice(i,i+2).map(v=>v.id),[],[]]);
+ const ict=vs.filter(v=>v.tier<=2).slice(0,5).map((v,i)=>['ICT-0'+(i+1),v.name,v.id,v.cat,'IBS-0'+((i%Math.max(1,ibs.length))+1),v.tier===1,'India',i%2===0,'2023-0'+(i+2)+'-01',v.contractEnd,['None','Documented','Tested','Documented','None'][i%5],i%3!==2,[82,95,100,88,76][i%5]]);
+ const regs=fd?['CERT-In','DORA']:['CERT-In'];
+ return{ibs,ict,inc:ibs.length?[['INC-301','Intermittent degradation of '+ibs[0][1],'2026-10-11T22:10','Significant','IBS-01','Investigating',regs,Object.assign({'CERT-In':'2026-10-12T02:00'},fd?{'DORA-initial':'2026-10-12T06:00'}:{}),'Sam Rivera'],['INC-302','Unplanned outage and recovery of '+(ibs[1]||ibs[0])[1],'2026-09-27T01:30','Major',(ibs[1]||ibs[0])[0],'Resolved',regs,Object.assign({'CERT-In':'2026-09-27T05:10'},fd?{'DORA-initial':'2026-09-27T13:00','DORA-intermediate':'2026-09-30T09:00','DORA-final':'2026-10-20T10:00'}:{}),'Sam Rivera']]:[],test:ibs.length?[['RT-01',ibs[0][1]+' failover test','DR failover','IBS-01','2026-05-20','Semi-annual','Passed with findings',2,'Sam Rivera'],['RT-02','Quarterly vulnerability scan','Vulnerability scan','IBS-01','2026-08-28','Monthly','Failed',9,'Sam Rivera'],['RT-03','External penetration test','Penetration test',(ibs[1]||ibs[0])[0],'2026-03-09','Annual','Passed with findings',3,'Sam Rivera']]:[]}}
+G.seeders.res=pid=>{const d=R[pid]||deriveRes();return{
  ibs:d.ibs.map(r=>({id:r[0],name:r[1],owner:r[2],crit:r[3],tol:r[4],rec:r[5],last:r[6],result:r[7],vendors:r[8],controls:r[9],risks:r[10],notes:''})),
  ict:d.ict.map(r=>({id:r[0],provider:r[1],vendor:r[2],service:r[3],ibs:r[4],critical:r[5],loc:r[6],sub:r[7],start:r[8],end:r[9],exit:r[10],audit:r[11],complete:r[12]})),
  inc:d.inc.map(r=>({id:r[0],title:r[1],detected:r[2],sev:r[3],ibs:r[4],status:r[5],regimes:r[6],notified:r[7],owner:r[8],notes:''})),

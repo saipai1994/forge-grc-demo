@@ -276,11 +276,11 @@ const MFG={id:'manufacturing',label:'Manufacturing',org:'India Manufacturing Dem
  owners:{GOV:'Morgan Chen',RISK:'Morgan Chen',TPR:'Evan Brooks',INC:'Sam Rivera',RES:'Jordan Lee',TEST:'Priya Shah',PRIV:'Priya Shah',SEC:'Sam Rivera',DISC:'Morgan Chen',CONDUCT:'Morgan Chen',FC:'Priya Shah',AI:'Sam Rivera'},
  adopt:['iso27001','nist-csf2','dpdp','certin','iso22301']};
 
-const PROFILES={manufacturing:MFG,bfsi:BFSI,general:GEN};
-let pid=null;try{pid=((location.hash.match(/^#(?:profile=)?(manufacturing|bfsi|general)$/)||[])[1])||localStorage.getItem('forgeGrcProfile')}catch{}
+const PROFILES={manufacturing:MFG,bfsi:BFSI,general:GEN,...(window.GRC_MORE||{})};
+let pid=null;try{pid=((location.hash.match(/^#(?:profile=)?(\w+)$/)||[])[1]);if(!PROFILES[pid])pid=localStorage.getItem('forgeGrcProfile')}catch{}
 if(!PROFILES[pid])pid='bfsi';
 const P=PROFILES[pid];
-GRC.P=P;GRC.PROFILES=PROFILES;GRC.seeds={bfsi:BFSI.seed,general:GEN.seed};
+GRC.P=P;GRC.PROFILES=PROFILES;GRC.seeds={};Object.values(PROFILES).forEach(p=>{if(p.seed)GRC.seeds[p.id]=p.seed});
 GRC.modOn=id=>P.modules.includes(id);
 try{localStorage.setItem('forgeGrcProfile',pid)}catch{}
 
@@ -289,7 +289,7 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 function setText(sel,t){const e=$(sel);if(e)e.textContent=t}
 // profile switcher in the top bar (all profiles)
 const top=$('.top-actions');
-if(top){const sel=document.createElement('select');sel.className='select';sel.id='profileSwitch';sel.title='Industry profile';sel.style.maxWidth='210px';sel.innerHTML=Object.values(PROFILES).map(p=>`<option value="${p.id}"${p.id===pid?' selected':''}>${p.label}</option>`).join('');
+if(top){const sel=document.createElement('select');sel.className='select';sel.id='profileSwitch';sel.title='Industry profile';sel.style.maxWidth='230px';{const core=['bfsi','general','manufacturing'],opt=p=>`<option value="${p.id}"${p.id===pid?' selected':''}>${p.label}</option>`;sel.innerHTML=`<optgroup label="Core profiles">${core.map(i=>opt(PROFILES[i])).join('')}</optgroup><optgroup label="More industries">${Object.values(PROFILES).filter(p=>!core.includes(p.id)).sort((x,y)=>x.label<y.label?-1:1).map(opt).join('')}</optgroup>`}
  sel.addEventListener('change',()=>{try{localStorage.setItem('forgeGrcProfile',sel.value)}catch{}location.hash=sel.value;location.reload()});top.prepend(sel)}
 if(pid!=='manufacturing'){
  // data used by the original app
