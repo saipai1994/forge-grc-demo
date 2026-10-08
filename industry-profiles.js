@@ -333,7 +333,6 @@ if(pid!=='manufacturing'){
   const bs=$('#view-dashboard .midgrid .panel:last-child .panel-sub');if(bs)bs.textContent=`${risks.length} active risks · ranked by open items`;
   const bf=$('#view-dashboard .barfoot');if(bf)bf.innerHTML=`<b>${high} risks</b> are outside appetite and need a treatment review`;
   $$('#view-dashboard .midgrid .panel:last-child .barrow').forEach(row=>row.onclick=()=>{go('risks');const f=$('#areaFilter');f.value=row.querySelector('span').textContent;f.dispatchEvent(new Event('input'))});
-  const nb=$('.nav button[data-view="libraries"]');if(nb)nb.style.display='none';
   GRC.swap();
  });
 }
