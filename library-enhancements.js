@@ -79,6 +79,7 @@ const baseDisplayRisk=displayRisk;displayRisk=function(r){const t=riskTemplates.
 document.getElementById('saveRisk').onclick=()=>{const title=document.getElementById('newRiskName').value.trim();if(!title){toast('Select a catalog risk or enter a title.');return}const score=Number(likSel.value)*Number(impSel.value),rating=scoresToRating(score),who=ownerSel.value||'Unassigned',t=riskTemplates.find(x=>x.id===templateSel.value),reviewDate=reviewInput.value||shiftISODate(localISODate(),30);const r={id:'R-'+String(40+risks.length+1).padStart(3,'0'),name:title,area:areaSel.value,inherent:rating,rating,score,likelihood:Number(likSel.value),impact:Number(impSel.value),owner:who,initial:initials(who==='Unassigned'?'U':who),date:new Date(`${reviewDate}T12:00:00`).toLocaleDateString('en-IN',{month:'short',day:'2-digit'}),reviewDate,description:document.getElementById('newRiskDesc').value.trim(),practiceId:t?.practice||'',standardIds:t?.standards||[],status:'Action needed',createdDate:localISODate()};risks.unshift(r);savedRisks.unshift(r);try{localStorage.setItem('forgeGrcCreatedRisksV1',JSON.stringify(savedRisks))}catch{}render();closeModal();go('risks');toast(`Risk ${r.id} created · score ${score}/25`)};
 riskRow=function(r,full=false){const safeName=libEsc(r.name),safeArea=libEsc(r.area),safeOwner=libEsc(r.owner),safeId=libEsc(r.id),dateText=libEsc(r.reviewDate||r.date);const ownerHtml=`<span class="owner"><span class="ownerav">${libEsc(r.initial||initials(r.owner))}</span>${safeOwner}</span>`;return full?`<tr data-rating="${libEsc(r.rating)}" data-area="${safeArea}" data-search="${libEsc((r.id+r.name+r.area+r.owner).toLowerCase())}"><td class="riskid">${safeId}</td><td><div class="riskname">${safeName}</div><div class="riskarea">Residual score ${Number(r.score)||0} / 25</div></td><td>${safeArea}</td><td>${badge(libEsc(r.inherent))}</td><td>${badge(libEsc(r.rating))} <span class="risk-score">${Number(r.score)||0}</span></td><td>${ownerHtml}</td><td>${dateText}</td><td>${badge(libEsc(r.status))}</td></tr>`:`<tr><td><div class="riskname">${safeName}</div><div class="riskid">${safeId} · ${safeArea}</div></td><td>${safeArea}</td><td>${badge(libEsc(r.rating))} <span class="risk-score">${Number(r.score)||0}</span></td><td>${ownerHtml}</td><td>${dateText}</td></tr>`};renderImportedCatalogs();
 
+
 // Demo identity switching, delegated access, and linked approval stage trees.
 const workflowUsers=[
  {id:'morgan',name:'Morgan Chen',role:'Administrator',scope:'All functions · Plant 01'},
@@ -97,7 +98,7 @@ const saveWorkflow=()=>{try{localStorage.setItem(workflowStorageKey,JSON.stringi
 const currentDemoUser=()=>workflowState.users.find(x=>x.id===workflowState.activeUser&&x.enabled)||workflowState.users.find(x=>x.enabled)||workflowUsers[0];
 const userByName=name=>workflowState.users.find(x=>x.name===name)||workflowState.users.find(x=>x.enabled&&x.role==='Administrator')||workflowUsers[0];
 const escapeW=libEsc;
-area=>area==='Environment'||area==='ESG'||area==='Compliance'?'priya':area==='Cybersecurity'?'sam':area==='Supply chain'?'evan':'jordan';
+const roleForArea=area=>area==='Environment'||area==='ESG'||area==='Compliance'?'priya':area==='Cybersecurity'?'sam':area==='Supply chain'?'evan':'jordan';
 const wfItemKey=(type,id)=>`${type}:${id}`;
 function stageBlueprint(type,record){const owner=userByName(record.owner||'Morgan Chen');if(type==='risk')return[
  {name:'Risk raised and owner assigned',assignee:owner.id,verb:'Submit risk assessment'},
@@ -164,5 +165,6 @@ document.getElementById('auditPlan').onclick=openAuditPlanForm;
 document.querySelectorAll('#allRiskRows tr,#priorityRows tr').forEach(row=>row.addEventListener('click',()=>{const id=row.querySelector('.riskid')?.textContent?.trim()||row.dataset.search?.match(/r-\d+/i)?.[0],r=risks.find(x=>x.id===id);if(r)showWorkflowRecord('risk',r)}));
 document.querySelectorAll('#findingRows tr').forEach(row=>row.addEventListener('click',()=>{const id=row.querySelector('.riskid')?.textContent?.trim()||row.innerText.match(/F-\d{3}/)?.[0],r=id&&workflowRecord('finding',id);if(r)showWorkflowRecord('finding',r)}));
 document.querySelectorAll('#evidenceRows tr').forEach((row,i)=>row.addEventListener('click',()=>{const id=`EV-${String(i+128).padStart(3,'0')}`,r=workflowRecord('evidence',id);if(r)showWorkflowRecord('evidence',r)}));
+
 
 document.querySelectorAll('#frameworkRows tr').forEach(row=>row.addEventListener('click',()=>{const id=row.cells[0]?.innerText.trim(),rec=id&&workflowRecord('framework',id);if(rec)showWorkflowRecord('framework',rec)}));
