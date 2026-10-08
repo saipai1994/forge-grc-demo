@@ -97,7 +97,7 @@ const saveWorkflow=()=>{try{localStorage.setItem(workflowStorageKey,JSON.stringi
 const currentDemoUser=()=>workflowState.users.find(x=>x.id===workflowState.activeUser&&x.enabled)||workflowState.users.find(x=>x.enabled)||workflowUsers[0];
 const userByName=name=>workflowState.users.find(x=>x.name===name)||workflowState.users.find(x=>x.enabled&&x.role==='Administrator')||workflowUsers[0];
 const escapeW=libEsc;
-const roleForArea=area=>area==='Environment'||area==='ESG'||area==='Compliance'?'priya':area==='Cybersecurity'?'sam':area==='Supply chain'?'evan':'jordan';
+area=>area==='Environment'||area==='ESG'||area==='Compliance'?'priya':area==='Cybersecurity'?'sam':area==='Supply chain'?'evan':'jordan';
 const wfItemKey=(type,id)=>`${type}:${id}`;
 function stageBlueprint(type,record){const owner=userByName(record.owner||'Morgan Chen');if(type==='risk')return[
  {name:'Risk raised and owner assigned',assignee:owner.id,verb:'Submit risk assessment'},
