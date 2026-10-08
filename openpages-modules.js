@@ -2,7 +2,8 @@
 // KRIs / loss events / heatmap, policy management, and third-party risk. Demo data only; runs in the
 // same scope as library-enhancements.js (see the loader at the end of index.html).
 (function(){
-const KEY='forgeGrcOpenPagesV1',TODAY='2026-10-12';
+const GRC=window.GRC=window.GRC||{};GRC.renders=GRC.renders||[];GRC.drawers=GRC.drawers||{};GRC.linkers=GRC.linkers||[];GRC.xTiles=GRC.xTiles||[];GRC.metrics=GRC.metrics||{};GRC.seeders=GRC.seeders||{};
+const PROF=(GRC.P&&GRC.P.id)||'manufacturing',KEY='forgeGrcOpenPagesV1'+(PROF==='manufacturing'?'':'-'+PROF),TODAY='2026-10-12';
 const E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const pad=n=>String(n).padStart(2,'0'),MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -24,7 +25,8 @@ const sev=s=>pill(s,sevK(s));
 
 // ---------- seed data ----------
 const FREQ={Monthly:30,Quarterly:91,'Semi-annual':182,Annual:365};
-function seed(){
+function seed(){const sd=GRC.seeds&&GRC.seeds[PROF];return sd?sd():seedMfg()}
+function seedMfg(){
  const ctl=[
   ['MA-07','Compressor preventive maintenance & pressure log review','Preventive','Manual','Monthly','Jordan Lee','Production',['R-014'],['ISO 9001'],'2026-09-18','Partially effective','Morgan Chen',2],
   ['MA-11','Air-pressure deviation alarm & escalation','Detective','Automated','Quarterly','Jordan Lee','Production',['R-014'],['ISO 9001'],'2026-08-20','Effective','Sam Rivera',0],
@@ -154,7 +156,7 @@ document.head.appendChild(css);
 
 const MODS=[
  {id:'issues',label:'Issues & actions',ico:'⚑',title:'Issues &amp; action plans',sub:'One register for issues from audits, control tests, KRI breaches, loss events and assessments, with action plans, escalation and independent closure.',tabs:[['register','Issue register'],['log','Activity log']]},
- {id:'controls',label:'Controls & testing',ico:'⛨',title:'Controls, testing &amp; RCSA',sub:'Control library mapped to risks and frameworks, test plans and results, and risk &amp; control self-assessment campaigns.',tabs:[['library','Control library'],['matrix','Risk–control matrix'],['tests','Control tests'],['rcsa','RCSA campaigns']]},
+ {id:'controls',label:'Controls & testing',ico:'⛨',title:'Controls &amp; testing',sub:'Control library mapped to risks and frameworks, test plans and results, and control attestations (the full RCSA lives under Risk operations → RCSA).',tabs:[['library','Control library'],['matrix','Risk–control matrix'],['tests','Control tests'],['rcsa','Control attestations']]},
  {id:'kris',label:'KRIs & loss events',ico:'◬',title:'Key risk indicators, loss events &amp; heatmap',sub:'Inherent vs residual heatmap against risk appetite, early-warning indicators with thresholds, and a loss and near-miss event database.',tabs:[['heat','Heatmap & appetite'],['kri','Key risk indicators'],['loss','Loss events']]},
  {id:'policies',label:'Policies',ico:'☰',title:'Policy &amp; procedure management',sub:'Lifecycle from draft to published, version history, review dates, and employee attestation.',tabs:[['library','Policy library']]},
  {id:'vendors',label:'Third parties',ico:'⇄',title:'Third-party risk',sub:'Vendor inventory with criticality tiers, due-diligence questionnaires, risk scoring, and reassessment tracking.',tabs:[['register','Vendor register']]}
@@ -277,7 +279,7 @@ const dcss=document.createElement('style');dcss.textContent=`.op-banner{display:
 .op-links{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}.op-link{border:1px solid #d6e0ee;background:#f4f8fd;color:#3d6197;border-radius:14px;padding:5px 10px;font-size:9.5px;font-weight:600;text-align:left}.op-link:hover{background:#e6eefa}`;document.head.appendChild(dcss);
 const rname=id=>{const r=risks.find(x=>x.id===id);return r?`${r.id} · ${r.name}`:id};
 function lk(id){if(!id)return '';const m=[['risk',risks.find(x=>x.id===id),r=>rname(id)],['issue',S.issues.find(x=>x.id===id),r=>`${r.id} · ${r.title}`],['control',S.controls.find(x=>x.id===id),r=>`${r.id} · ${r.name}`],['kri',S.kris.find(x=>x.id===id),r=>`${r.id} · ${r.name}`],['loss',S.losses.find(x=>x.id===id),r=>`${r.id} · ${r.title}`],['policy',S.policies.find(x=>x.id===id),r=>`${r.id} · ${r.title}`],['vendor',S.vendors.find(x=>x.id===id),r=>`${r.id} · ${r.name}`]].find(x=>x[1]);
- if(!m){const t=S.tests.find(x=>x.id===id);return t?lk(t.ctrl):`<span class="badgepill pill-blue">${E(id)}</span>`}
+ if(!m){const t=S.tests.find(x=>x.id===id);if(t)return lk(t.ctrl);for(const f of GRC.linkers){const x=f(id);if(x)return `<button class="op-link" data-op="open" data-t="${x.type}" data-id="${E(id)}">${E(x.label.length>58?x.label.slice(0,56)+'…':x.label)}</button>`}return `<span class="badgepill pill-blue">${E(id)}</span>`}
  const lab=m[2](m[1]);return `<button class="op-link" data-op="${m[0]==='risk'?'risk':'open'}" data-t="${m[0]}" data-id="${E(id)}">${E(lab.length>58?lab.slice(0,56)+'…':lab)}</button>`}
 const links=ids=>{const u=[...new Set(ids.filter(Boolean))];return u.length?`<div class="op-links">${u.map(lk).join('')}</div>`:'<p class="op-note">Nothing linked yet.</p>'};
 function pendHtml(P,okText){const r=P.filter(x=>x[0]==='red').length,a=P.filter(x=>x[0]==='amber').length,k=r?'red':a?'amber':'green';
@@ -398,7 +400,7 @@ function drawVendor(v){
 }
 function drawCell(id){const[l,i]=id.split('-').map(Number),rs=risks.filter(r=>{const p=riskLI(r,UI.heat);return p[0]===l&&p[1]===i});setDrawer(`${UI.heat==='inherent'?'Inherent':'Residual'} heatmap`,`Likelihood ${l} × Impact ${i} = ${l*i}`,(rs.length?`<p class="op-note">Select a risk to open its full record.</p><div class="op-links">${rs.map(r=>lk(r.id)).join('')}</div>`+rs.map(r=>`<div class="op-li"><div><b>${r.id}</b> · ${E(r.name)}<div class="riskarea">${E(r.area)} · ${E(r.owner)} · control coverage: ${riskCoverage(r.id)}</div></div>${badge(r.rating)}</div>`).join(''):'<p class="op-note">No risks in this cell.</p>'))}
 function renderDrawer(){const d=UI.drawer;if(!d)return;const find=(a,id)=>a.find(x=>x.id===id);
- const m={issue:()=>drawIssue(find(S.issues,d.id)),control:()=>drawControl(find(S.controls,d.id)),kri:()=>drawKri(find(S.kris,d.id)),loss:()=>drawLoss(find(S.losses,d.id)),policy:()=>drawPolicy(find(S.policies,d.id)),vendor:()=>drawVendor(find(S.vendors,d.id)),cell:()=>drawCell(d.id)}[d.type];try{m()}catch(e){console.error('Record view failed',d,e);closeDrawer()}}
+ const m={issue:()=>drawIssue(find(S.issues,d.id)),control:()=>drawControl(find(S.controls,d.id)),kri:()=>drawKri(find(S.kris,d.id)),loss:()=>drawLoss(find(S.losses,d.id)),policy:()=>drawPolicy(find(S.policies,d.id)),vendor:()=>drawVendor(find(S.vendors,d.id)),cell:()=>drawCell(d.id),metric:()=>drawMetric(d.id)}[d.type]||(GRC.drawers[d.type]?()=>GRC.drawers[d.type](d.id):null);if(!m){closeDrawer();return}try{m()}catch(e){console.error('Record view failed',d,e);closeDrawer()}}
 
 // ---------- dashboard snapshot + nav badges ----------
 function renderSnapshot(){
@@ -408,7 +410,7 @@ function renderSnapshot(){
  host.innerHTML=`<div class="panelhead" style="margin:4px 2px 9px"><div><div class="panel-title">Governance &amp; assurance snapshot</div><div class="panel-sub">Issues, controls, indicators, policies and third parties · click a tile to open the module</div></div></div><div class="grid" style="grid-template-columns:repeat(5,1fr)">${t('issues','Open issues',open.length,od?od+' overdue':'none overdue',od?'red':'')}${t('controls','Ineffective controls',bad,'of '+S.controls.length+' in library',bad?'red':'')}${t('kris','KRIs in red',red,'of '+S.kris.length+' indicators',red?'red':'')}${t('policies','Policies needing attention',pol,'overdue review or low attestation',pol?'amber':'')}${t('vendors','High-risk vendors',ven,'of '+S.vendors.length+' third parties',ven?'amber':'')}</div>`;
 }
 function renderBadges(){const set=(id,n)=>{const b=$('#opBadge-'+id);if(b){b.textContent=n;b.style.display=n?'':'none'}};set('issues',S.issues.filter(isOverdue).length);set('controls',S.controls.filter(c=>c.result==='Ineffective').length);set('kris',S.kris.filter(k=>kriStatus(k)==='Red').length);set('policies',S.policies.filter(polOverdue).length);set('vendors',S.vendors.filter(v=>['High','Critical'].includes(vRating(v))).length)}
-function renderAll(){[renderIssues,renderControls,renderKris,renderPolicies,renderVendors,renderSnapshot,renderBadges].forEach(f=>{try{f()}catch(e){console.error('OpenPages module render failed',f.name,e)}});renderDrawer()}
+function renderAll(){if(GRC.ensure)GRC.ensure();[renderIssues,renderControls,renderKris,renderPolicies,renderVendors,renderSnapshot,renderBadges,renderExec,...GRC.renders].forEach(f=>{try{f()}catch(e){console.error('Module render failed',f.name,e)}});renderDrawer()}
 const commit=()=>{save();renderAll()};
 
 // ---------- exports ----------
@@ -467,12 +469,184 @@ const actions={
  'ven-assess':b=>{const v=S.vendors.find(x=>x.id===b.dataset.id);openForm('Due-diligence assessment · '+v.name,QUESTIONS.map((q,i)=>({name:'q'+i,label:`${q[0]}: ${q[1]}`,type:'select',full:true,options:['Yes','Partial','No','N/A'],value:'Yes'})),'Score & save',a=>{let pts=0,n=0;QUESTIONS.forEach((q,i)=>{const x=a['q'+i];if(x==='N/A')return;n++;pts+=x==='Yes'?1:x==='Partial'?.5:0});if(!n)return 'Answer at least one question.';const sc=Math.round(pts/n*100);v.score=sc;v.last=TODAY;v.hist.push({date:TODAY,score:sc,by:me().name,ans:QUESTIONS.map((q,i)=>[q[0],a['q'+i]])});logIt(v.id,`Assessment completed: score ${sc} (${ratingOf(sc)}).`);commit();toast(`${v.name}: score ${sc} · ${ratingOf(sc)} risk.`);if(sc<50)raise('Vendor assessment',v.id,`Critical third-party risk: ${v.name}`,'Critical',v.owner,`Due-diligence score ${sc}/100.`,'Third party')})},
  'ven-issue':b=>{const v=S.vendors.find(x=>x.id===b.dataset.id);raise('Vendor assessment',v.id,`Third-party risk: ${v.name}`,vRating(v)==='Critical'?'Critical':'High',v.owner,`Due-diligence score ${v.score}/100 (${vRating(v)}).`,'Third party')}
 };
+// ---------- executive (management) dashboard ----------
+// Every tile, chart bar, heatmap cell and table row is clickable and opens the records behind the number.
+const XF=UI.x={area:'All',owner:'All',period:'365'};
+const AREAS=[];const areasNow=()=>[...new Set(risks.map(r=>r.area))],PERIODS=[['30','Last 30 days'],['90','Last 90 days'],['365','Last 12 months'],['all','All time']];
+const monthKey=iso=>iso.slice(0,7);
+const riskArea=id=>(risks.find(r=>r.id===id)||{}).area;
+const areaOk=a=>XF.area==='All'||a===XF.area,ownerOk=o=>XF.owner==='All'||o===XF.owner;
+function xData(){
+ const rs=risks.filter(r=>areaOk(r.area)&&ownerOk(r.owner));
+ const issues=S.issues.filter(i=>ownerOk(i.owner)&&(XF.area==='All'||issueRisks(i).some(id=>riskArea(id)===XF.area)));
+ const ctrls=S.controls.filter(c=>areaOk(c.area)&&ownerOk(c.owner));
+ const kris=S.kris.filter(k=>ownerOk(k.owner)&&areaOk(riskArea(k.risk)));
+ const cut=XF.period==='all'?'0000-00-00':addDays(TODAY,-(+XF.period));
+ const losses=S.losses.filter(l=>l.date>=cut&&ownerOk(l.reporter)&&(XF.area==='All'||riskArea(l.risk)===XF.area));
+ const vendors=S.vendors.filter(v=>ownerOk(v.owner)&&(XF.area==='All'||v.risks.some(id=>riskArea(id)===XF.area)));
+ const cids=new Set(ctrls.map(c=>c.id));
+ const policies=S.policies.filter(p=>ownerOk(p.owner)&&(XF.area==='All'||p.ctrls.some(id=>S.controls.find(c=>c.id===id&&c.area===XF.area))));
+ return{rs,issues,ctrls,kris,losses,vendors,policies,cut};
+}
+const net=l=>l.gross-l.rec;
+const ageBucket=i=>{if(i.status==='Closed')return -1;if(!isOverdue(i))return 0;const d=dayN(TODAY)-dayN(i.due);return d<=7?1:d<=14?2:3};
+const AGE=['Not yet due','Overdue 1–7 days','Overdue 8–14 days','Overdue 15+ days'];
+const kriWorse=k=>k.series.length>1&&k.series[k.series.length-1]>k.series[k.series.length-2];
+
+// ---- drill-down lists: key -> {kicker,title,note,rows:[{id,sub,pill}]}
+function metric(key){
+ const d=xData(),ap=S.appetite,[k,arg]=key.split(':');
+ const R=(id,sub,p)=>({id,sub,pill:p||''});
+ const risksRows=a=>a.map(r=>R(r.id,`${r.area} · ${r.owner} · residual ${r.score} · control coverage ${riskCoverage(r.id)}`,badge(r.rating)));
+ const issueRows=a=>a.map(i=>R(i.id,`${i.sev} · ${i.owner} · due ${fmt(i.due)}${isOverdue(i)?` · ${dayN(TODAY)-dayN(i.due)} days overdue (${ESC[escLevel(i)]})`:''} · ${i.actions.filter(x=>x.done).length}/${i.actions.length} actions`,pill(i.status,stK[isOverdue(i)?'Overdue':i.status]||'blue')));
+ const ctlRows=a=>a.map(c=>R(c.id,`${c.area} · ${c.owner} · last tested ${fmt(c.lastTest)}${ctrlDue(c)?' · test overdue':''}`,pill(c.result,resK[c.result])));
+ const M={
+  'risk-out':()=>['Risk','Risks outside appetite (score above '+ap+')','Highest residual score first. Open a risk to see its treatment, or raise an issue from the register.',risksRows(d.rs.filter(r=>r.score>ap).sort((a,b)=>b.score-a.score))],
+  'exposure':()=>['Risk','Residual exposure by risk','All risks in the current view, ranked by residual score.',risksRows([...d.rs].sort((a,b)=>b.score-a.score))],
+  'area':()=>['Risk',`${arg} risks`,'Risks in this operational area for the selected owner.',risksRows(risks.filter(r=>r.area===arg&&ownerOk(r.owner)).sort((a,b)=>b.score-a.score))],
+  'issue-od':()=>['Issues','Overdue issues','Oldest first. Level shows who the escalation has reached.',issueRows(d.issues.filter(isOverdue).sort((a,b)=>a.due<b.due?-1:1))],
+  'issue-open':()=>['Issues','All open issues','Everything not yet closed in the current view.',issueRows(d.issues.filter(i=>i.status!=='Closed').sort((a,b)=>a.due<b.due?-1:1))],
+  'age':()=>['Issues',AGE[arg],'Open issues in this ageing bucket.',issueRows(d.issues.filter(i=>ageBucket(i)===+arg))],
+  'ctl-bad':()=>['Controls','Ineffective or partially effective controls','Controls whose latest test found failures.',ctlRows(d.ctrls.filter(c=>c.result==='Ineffective'||c.result==='Partially effective'))],
+  'ctl-due':()=>['Controls','Controls with an overdue test','The next test date has passed.',ctlRows(d.ctrls.filter(ctrlDue))],
+  'ctl':()=>['Controls',`Controls · ${arg}`,'Latest test result across the control library.',ctlRows(d.ctrls.filter(c=>c.result===arg))],
+  'kri-red':()=>['Indicators','Key risk indicators in red','Breached the red threshold. Open one to log a reading or raise an issue.',d.kris.filter(x=>kriStatus(x)==='Red').map(x=>R(x.id,`${x.name} · latest ${x.series[x.series.length-1]}${x.unit} · red at ${x.red} · ${x.owner}`,pill('Red','red')))],
+  'kri-all':()=>['Indicators','All key risk indicators','Status of every indicator in the current view.',d.kris.map(x=>R(x.id,`${x.name} · latest ${x.series[x.series.length-1]}${x.unit} · ${x.owner}${kriWorse(x)?' · worsening':''}`,pill(kriStatus(x),ragK[kriStatus(x)])))],
+  'loss':()=>['Losses','Loss and near-miss events',`Events from ${XF.period==='all'?'all time':'the selected period'}. Net loss = gross loss minus recoveries.`,d.losses.sort((a,b)=>a.date<b.date?1:-1).map(l=>R(l.id,`${fmt(l.date)} · ${l.cat} · gross ${inr(l.gross)} · recovered ${inr(l.rec)} · ${l.status}`,pill(inr(net(l)),net(l)>=300000?'red':net(l)>0?'amber':'green')))],
+  'lossm':()=>['Losses',`Loss events · ${MON[+arg.slice(5)-1]} ${arg.slice(0,4)}`,'Events dated in this month.',S.losses.filter(l=>monthKey(l.date)===arg&&ownerOk(l.reporter)&&(XF.area==='All'||riskArea(l.risk)===XF.area)).map(l=>R(l.id,`${fmt(l.date)} · ${l.cat} · gross ${inr(l.gross)} · recovered ${inr(l.rec)}`,pill(inr(net(l)),net(l)>=300000?'red':net(l)>0?'amber':'green')))],
+  'vendor-high':()=>['Third parties','High and critical risk third parties','Lowest due-diligence score first.',d.vendors.filter(v=>['High','Critical'].includes(vRating(v))).sort((a,b)=>a.score-b.score).map(v=>R(v.id,`Tier ${v.tier} · ${v.cat} · score ${v.score}/100 · ${v.owner}${v.single?' · single source':''}${vDue(v)?' · reassessment overdue':''}`,badge(vRating(v))))],
+  'policy':()=>['Policies','Policies needing attention','Review overdue, or attestation below 80%.',d.policies.filter(p=>polOverdue(p)||(p.status==='Published'&&attPct(p)<80)).map(p=>R(p.id,`${p.type} v${p.ver} · ${p.owner} · attested ${attPct(p)}% · review ${fmt(p.review)}`,pill(polStatus(p),polK[polStatus(p)])))],
+  'owner':()=>['People',`Accountability · ${arg}`,'Everything this person owns that needs attention.',[
+    ...risks.filter(r=>r.owner===arg&&r.score>ap).map(r=>R(r.id,`Risk outside appetite · residual ${r.score}`,badge(r.rating))),
+    ...S.issues.filter(i=>i.owner===arg&&isOverdue(i)).map(i=>R(i.id,`Overdue issue · ${dayN(TODAY)-dayN(i.due)} days`,pill(i.sev,sevK(i.sev)))),
+    ...S.controls.filter(c=>c.owner===arg&&(c.result==='Ineffective'||ctrlDue(c))).map(c=>R(c.id,c.result==='Ineffective'?'Ineffective control':'Control test overdue',pill(c.result,resK[c.result]))),
+    ...S.kris.filter(x=>x.owner===arg&&kriStatus(x)==='Red').map(x=>R(x.id,'Indicator in red',pill('Red','red')))]]
+ };
+ const r=(M[k]||(GRC.metrics[k]?()=>GRC.metrics[k](arg,d):null)||M['risk-out'])();
+ return{kicker:r[0],title:r[1],note:r[2],rows:r[3],key};
+}
+function drawMetric(key){
+ const m=metric(key);
+ setDrawer(m.kicker,m.title,`<p class="op-note" style="margin:0 0 8px">${m.note}</p><div class="op-btns" style="margin-top:0"><button class="op-mini" data-op="x-export" data-key="${E(key)}">↓ Export this list</button></div>`+(m.rows.length?m.rows.map(r=>`<div class="op-li"><div>${lk(r.id)}<div class="riskarea">${E(r.sub)}</div></div>${r.pill}</div>`).join(''):'<p class="op-note">Nothing here for the current filters.</p>'));
+}
+
+// ---- the view
+const xSec=document.createElement('section');xSec.className='view';xSec.id='view-exec';
+$('.content').appendChild(xSec);views.push('exec');labels.exec='Executive view';
+const dashBtn=$('.nav button[data-view="dashboard"]');
+if(dashBtn){const b=document.createElement('button');b.dataset.view='exec';b.innerHTML='<span class="ico">◐</span><span class="navtext">Executive view</span><span class="badge" id="opBadge-exec" style="display:none"></span>';dashBtn.after(b);b.addEventListener('click',()=>{go('exec');renderAll()})}
+const dHead=$('#view-dashboard .head-actions');if(dHead){const b=document.createElement('button');b.className='btn primary';b.dataset.op='goto';b.dataset.v='exec';b.innerHTML='<span class="btnico">◐</span>Executive view';dHead.prepend(b)}
+const xcss=document.createElement('style');xcss.textContent=`
+.x-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.x-filters label{font:500 9px 'DM Mono';letter-spacing:.8px;color:#8a95a3;text-transform:uppercase}.x-chip{border:1px solid #cce4dd;background:#f1faf7;color:#187766;border-radius:12px;padding:4px 9px;font-size:10px;font-weight:600}
+.x-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:14px}.x-tile{padding:15px 16px;cursor:pointer;border-top:3px solid #e8ebef;transition:.15s}.x-tile:hover{box-shadow:0 8px 22px #22334a1c;transform:translateY(-1px)}.x-tile.red{border-top-color:#cb554d}.x-tile.amber{border-top-color:#d48a24}.x-tile.green{border-top-color:#178b78}
+.x-tile .l{font-size:10px;font-weight:600;color:#778293;display:flex;justify-content:space-between}.x-tile .v{font:700 27px Manrope;letter-spacing:-1px;margin:6px 0 2px}.x-tile.red .v{color:#bf554d}.x-tile.amber .v{color:#c2791a}.x-tile.green .v{color:#178b78}.x-tile .f{font-size:9.5px;color:#8a95a3}.x-tile .go{font-size:9px;color:#6784a2;margin-top:8px;font-weight:600}
+.x-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;margin-bottom:14px}.x-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+.x-row{display:grid;grid-template-columns:110px 1fr 54px;gap:10px;align-items:center;padding:6px 4px;border-radius:6px;cursor:pointer;font-size:10px;color:#586779}.x-row:hover,.x-row.sel{background:#f3f6f9}.x-row.sel{outline:1px solid #cdd9e6}.x-stack{display:flex;height:10px;border-radius:5px;overflow:hidden;background:#f0f2f5}.x-stack i{display:block;height:100%}.x-row .n{text-align:right;font:10px 'DM Mono';color:#516174}
+.x-att{display:grid;grid-template-columns:22px 1fr auto auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #f0f2f4;font-size:10px}.x-att:last-child{border-bottom:0}.x-att .ic{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:11px;background:#fcebea;color:#ad4b45}.x-att .ic.a{background:#fff4e1;color:#a66b13}.x-att .m{font-size:9px;color:#8a95a3;margin-top:2px}
+.x-bars{display:flex;align-items:flex-end;gap:10px;height:150px;padding:6px 4px 0}.x-bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer;border-radius:6px}.x-bar:hover{background:#f3f6f9}.x-bar .col{width:70%;min-height:2px;border-radius:5px 5px 0 0;background:#6487c0}.x-bar .val{font:9px 'DM Mono';color:#516174;margin-bottom:3px}.x-bar .lab{font:9px 'DM Mono';color:#8a95a3;margin-top:6px}
+.x-kri{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.x-kt{border:1px solid #edf0f2;border-radius:8px;padding:9px 10px;cursor:pointer;background:#fff}.x-kt:hover{border-color:#aeb8c5}.x-kt.Red{border-left:3px solid #cb554d}.x-kt.Amber{border-left:3px solid #d48a24}.x-kt.Green{border-left:3px solid #178b78}.x-kt .n{font-size:9px;color:#586779;line-height:1.35;min-height:24px}.x-kt .vv{display:flex;justify-content:space-between;align-items:center;margin-top:4px;font:600 13px Manrope}
+tr.x-own{cursor:pointer}tr.x-own.sel{background:#f3f6f9}.x-num{font:600 11px 'DM Mono'}.x-num.r{color:#bf554d}
+@media(max-width:1100px){.x-tiles{grid-template-columns:repeat(2,1fr)}.x-grid,.x-grid3{grid-template-columns:1fr}}@media(max-width:600px){.x-tiles{grid-template-columns:1fr}.x-kri{grid-template-columns:repeat(2,1fr)}}`;
+document.head.appendChild(xcss);
+
+function renderExec(){
+ const d=xData(),ap=S.appetite;
+ const sel=(k,opts,cur)=>`<select class="select" data-xf="${k}">${opts.map(o=>`<option value="${E(o[0])}"${o[0]===cur?' selected':''}>${E(o[1])}</option>`).join('')}</select>`;
+ const filtered=XF.area!=='All'||XF.owner!=='All';
+ // headline numbers
+ const out=d.rs.filter(r=>r.score>ap),avg=d.rs.length?(d.rs.reduce((s,r)=>s+r.score,0)/d.rs.length):0;
+ const od=d.issues.filter(isOverdue),hiOd=od.filter(i=>['High','Critical'].includes(i.sev)),openI=d.issues.filter(i=>i.status!=='Closed');
+ const tested=d.ctrls.filter(c=>c.result!=='Not tested'),eff=tested.filter(c=>c.result==='Effective').length,effPct=tested.length?Math.round(eff/tested.length*100):0,ineff=d.ctrls.filter(c=>c.result==='Ineffective').length,cDue=d.ctrls.filter(ctrlDue).length;
+ const red=d.kris.filter(k=>kriStatus(k)==='Red'),worse=d.kris.filter(kriWorse).length;
+ const gross=d.losses.reduce((s,l)=>s+l.gross,0),rec=d.losses.reduce((s,l)=>s+l.rec,0);
+ const hv=d.vendors.filter(v=>['High','Critical'].includes(vRating(v))),vd=d.vendors.filter(vDue).length;
+ const pub=d.policies.filter(p=>p.status==='Published'),att=pub.length?Math.round(pub.reduce((s,p)=>s+attPct(p),0)/pub.length):0,polBad=d.policies.filter(p=>polOverdue(p)||(p.status==='Published'&&attPct(p)<80)).length;
+ const tile=(key,l,v,f,k,ic)=>`<article class="card x-tile ${k}" data-op="x-open" data-key="${key}"><div class="l"><span>${l}</span><span>${ic}</span></div><div class="v">${v}</div><div class="f">${f}</div><div class="go">View records →</div></article>`;
+ const tiles=[
+  tile('risk-out','Risks outside appetite',`${out.length}<span style="font-size:15px;color:#8a95a3"> / ${d.rs.length}</span>`,`Appetite score ${ap} · avg residual ${avg.toFixed(1)}`,out.length>2?'red':out.length?'amber':'green','◈'),
+  tile('issue-od','Overdue issues',od.length,`${hiOd.length} high / critical · ${openI.length} open in total`,hiOd.length?'red':od.length?'amber':'green','⚑'),
+  tile('ctl-bad','Control effectiveness',effPct+'%',`${ineff} ineffective · ${cDue} test${cDue===1?'':'s'} overdue`,effPct<75?'red':effPct<90?'amber':'green','⛨'),
+  tile('kri-red','Indicators in red',`${red.length}<span style="font-size:15px;color:#8a95a3"> / ${d.kris.length}</span>`,`${worse} indicator${worse===1?'':'s'} worsening on last reading`,red.length>2?'red':red.length?'amber':'green','◬'),
+  tile('loss','Net loss · '+(PERIODS.find(p=>p[0]===XF.period)||[])[1].toLowerCase(),inr(gross-rec),`Gross ${inr(gross)} · recovered ${inr(rec)} · ${d.losses.length} events`,gross-rec>600000?'red':gross-rec>0?'amber':'green','₹'),
+  tile('vendor-high','High-risk third parties',hv.length,`${vd} reassessment${vd===1?'':'s'} overdue · ${d.vendors.filter(v=>v.single).length} single-source`,hv.length>2?'red':hv.length?'amber':'green','⇄'),
+  tile('policy','Policy attestation',att+'%',`${polBad} polic${polBad===1?'y':'ies'} need attention`,att<80?'red':att<92?'amber':'green','☰'),
+  ...GRC.xTiles.map(f=>{try{const t=f(d);return t?tile(t.key,t.l,t.v,t.f,t.k,t.ic):''}catch(e){console.error(e);return ''}}),
+  tile('exposure','Residual exposure',avg.toFixed(1),`Average residual score (1–25) across ${d.rs.length} risks`,avg>12?'red':avg>8?'amber':'green','▦')
+ ].join('');
+ // attention list
+ const A=[];
+ d.issues.filter(isOverdue).forEach(i=>A.push({w:60+escLevel(i)*10+(['High','Critical'].includes(i.sev)?15:0),id:i.id,t:`${i.title}`,m:`${i.sev} issue · ${dayN(TODAY)-dayN(i.due)} days overdue · ${ESC[escLevel(i)]} · ${i.owner}`,o:i.owner,r:1}));
+ d.rs.filter(r=>r.score>ap&&['No control','Weak'].includes(riskCoverage(r.id))).forEach(r=>A.push({w:50+r.score,id:r.id,t:r.name,m:`Outside appetite (${r.score}) with ${riskCoverage(r.id).toLowerCase()} control coverage · ${r.owner}`,o:r.owner,r:1}));
+ d.ctrls.filter(c=>c.result==='Ineffective').forEach(c=>A.push({w:55,id:c.id,t:c.name,m:`Ineffective control${ctrlDue(c)?', test overdue':''} · ${c.owner}`,o:c.owner,r:1}));
+ red.forEach(k=>A.push({w:52+(kriWorse(k)?5:0),id:k.id,t:k.name,m:`Red indicator${kriWorse(k)?' and worsening':''} · latest ${k.series[k.series.length-1]}${k.unit} vs red ${k.red} · ${k.owner}`,o:k.owner,r:1}));
+ hv.filter(vDue).forEach(v=>A.push({w:45,id:v.id,t:v.name,m:`${vRating(v)} risk third party, reassessment overdue · score ${v.score} · ${v.owner}`,o:v.owner,r:0}));
+ d.policies.filter(polOverdue).forEach(p=>A.push({w:35,id:p.id,t:p.title,m:`Review overdue since ${fmt(p.review)} · ${p.owner}`,o:p.owner,r:0}));
+ A.sort((a,b)=>b.w-a.w);const attn=A.slice(0,7);
+ const attnHtml=attn.length?attn.map(a=>`<div class="x-att"><div class="ic${a.r?'':' a'}">${a.r?'!':'◷'}</div><div><div class="riskname" style="font-size:11px">${lk(a.id)}</div><div class="m">${E(a.t.length>70?a.t.slice(0,68)+'…':a.t)}<br>${E(a.m)}</div></div><div></div><button class="op-mini" data-op="x-nudge" data-id="${a.id}" data-owner="${E(a.o)}">Ask for update</button></div>`).join(''):'<p class="op-note">Nothing needs executive attention for these filters.</p>';
+ // heatmap
+ const cells={};d.rs.forEach(r=>{const[l,i]=riskLI(r,UI.heat);(cells[l+'-'+i]=cells[l+'-'+i]||[]).push(r)});
+ let grid='<div class="op-axis"></div>'+[1,2,3,4,5].map(i=>`<div class="op-axis">${i}</div>`).join('');
+ for(let l=5;l>=1;l--){grid+=`<div class="op-axis">${l}</div>`;for(let i=1;i<=5;i++){const rs=cells[l+'-'+i]||[],sc=l*i;grid+=`<div class="op-cell${sc>ap?' out':''}" style="background:${heatCol(sc)}" data-op="open" data-t="cell" data-id="${l}-${i}">${rs.map(r=>`<span class="op-chip">${r.id}</span>`).join('')}<small>${sc}</small></div>`}}
+ // risk by area
+ const RK=['Critical','High','Medium','Low'],RC={Critical:'#cb554d',High:'#e08a52',Medium:'#e4b85c',Low:'#69ad9b'};
+ const areaRows=areasNow().map(a=>{const rs=risks.filter(r=>r.area===a&&ownerOk(r.owner));const mx=Math.max(1,...areasNow().map(z=>risks.filter(r=>r.area===z&&ownerOk(r.owner)).length));
+  return `<div class="x-row${XF.area===a?' sel':''}" data-op="x-area" data-a="${a}"><span>${a}</span><div class="x-stack" style="width:${rs.length/mx*100}%;min-width:${rs.length?8:0}px">${RK.map(k=>{const n=rs.filter(r=>r.rating===k).length;return n?`<i style="flex:${n};background:${RC[k]}" title="${n} ${k}"></i>`:''}).join('')}</div><span class="n">${rs.length} · ${rs.filter(r=>r.score>ap).length} out</span></div>`}).join('');
+ // loss trend (6 months)
+ const months=[];for(let i=5;i>=0;i--){const dt=new Date(TODAY+'T12:00:00Z');dt.setUTCMonth(dt.getUTCMonth()-i,1);months.push(`${dt.getUTCFullYear()}-${pad(dt.getUTCMonth()+1)}`)}
+ const lm=months.map(m=>({m,v:S.losses.filter(l=>monthKey(l.date)===m&&ownerOk(l.reporter)&&(XF.area==='All'||riskArea(l.risk)===XF.area)).reduce((s,l)=>s+net(l),0)})),lmax=Math.max(1,...lm.map(x=>x.v));
+ const lossBars=lm.map(x=>`<div class="x-bar" data-op="x-open" data-key="lossm:${x.m}"><div class="val">${x.v?'₹'+Math.round(x.v/1000)+'k':'–'}</div><div class="col" style="height:${Math.max(2,x.v/lmax*100)}%;${x.v>=300000?'background:#cb554d':''}"></div><div class="lab">${MON[+x.m.slice(5)-1]}</div></div>`).join('');
+ // ageing + control results
+ const ageN=[0,1,2,3].map(b=>d.issues.filter(i=>ageBucket(i)===b).length),ageMx=Math.max(1,...ageN),AK=['green','amber','amber','red'];
+ const ageRows=AGE.map((l,b)=>`<div class="x-row" data-op="x-open" data-key="age:${b}"><span>${l}</span>${bar(ageN[b]/ageMx*100,AK[b])}<span class="n">${ageN[b]}</span></div>`).join('');
+ const RES=['Effective','Partially effective','Ineffective','Not tested'],resN=RES.map(r=>d.ctrls.filter(c=>c.result===r).length),resMx=Math.max(1,...resN),RK2=['green','amber','red','amber'];
+ const resRows=RES.map((l,i)=>`<div class="x-row" data-op="x-open" data-key="ctl:${l}"><span>${l}</span>${bar(resN[i]/resMx*100,RK2[i])}<span class="n">${resN[i]}</span></div>`).join('');
+ // KRI board
+ const kriTiles=d.kris.map(k=>{const st=kriStatus(k);return `<div class="x-kt ${st}" data-op="open" data-t="kri" data-id="${k.id}"><div class="n">${E(k.name)}</div><div class="vv"><span>${k.series[k.series.length-1]}${k.unit}</span>${spark(k)}</div></div>`}).join('');
+ // owner accountability
+ const owners=[...new Set([...risks.map(r=>r.owner),...S.issues.map(i=>i.owner),...S.controls.map(c=>c.owner),...S.kris.map(k=>k.owner)])].sort();
+ const ownRows=owners.map(o=>({o,r:risks.filter(r=>r.owner===o&&r.score>ap).length,i:S.issues.filter(i=>i.owner===o&&isOverdue(i)).length,c:S.controls.filter(c=>c.owner===o&&(c.result==='Ineffective'||ctrlDue(c))).length,k:S.kris.filter(k=>k.owner===o&&kriStatus(k)==='Red').length})).map(x=>({...x,t:x.r+x.i+x.c+x.k})).sort((a,b)=>b.t-a.t);
+ const n=(v)=>`<span class="x-num${v?' r':''}">${v||'–'}</span>`;
+ const ownHtml=table(['Owner','Risks over appetite','Overdue issues','Control gaps','Red indicators','Total'],ownRows.map(x=>`<tr class="x-own${XF.owner===x.o?' sel':''}" data-op="x-owner" data-o="${E(x.o)}"><td>${own(x.o)}</td><td>${n(x.r)}</td><td>${n(x.i)}</td><td>${n(x.c)}</td><td>${n(x.k)}</td><td><b class="x-num">${x.t}</b></td></tr>`));
+ $('#view-exec').innerHTML=`<div class="pagehead"><div><h1 class="title">Executive view</h1><div class="subtitle">Where the plant stands today, what needs a decision, and who owns it. Click any tile, bar, cell or row to see the records behind it.</div></div><div class="head-actions"><button class="btn" data-op="x-pack"><span class="btnico">↓</span>Export board pack</button></div></div>
+ <div class="x-filters"><label>Area</label>${sel('area',[['All','All areas'],...areasNow().map(a=>[a,a])],XF.area)}<label>Owner</label>${sel('owner',[['All','All owners'],...owners.map(o=>[o,o])],XF.owner)}<label>Losses</label>${sel('period',PERIODS,XF.period)}${filtered?`<span class="x-chip">Filtered view</span><button class="op-mini" data-op="x-reset">Clear filters</button>`:''}<span class="panel-sub" style="margin-left:auto">As of ${fmt(TODAY)} · demo data</span></div>
+ <div class="x-tiles">${tiles}</div>
+ <div class="x-grid">${card('Needs executive attention','Ranked by severity and how long it has been overdue',attnHtml)}<article class="card panel"><div class="panelhead"><div><div class="panel-title">${UI.heat==='inherent'?'Inherent':'Residual'} risk heatmap</div><div class="panel-sub">Red outline = above appetite (${ap}). Click a cell to list its risks.</div></div><div class="libtabs" style="margin:0;border:0"><button class="libtab${UI.heat==='inherent'?' active':''}" data-op="x-heat" data-m="inherent">Inherent</button><button class="libtab${UI.heat==='residual'?' active':''}" data-op="x-heat" data-m="residual">Residual</button></div></div><div class="op-heat">${grid}</div></article></div>
+ <div class="x-grid3"><article class="card panel"><div class="panel-title">Risks by area</div><div class="panel-sub" style="margin-bottom:10px">Bar length = risk count, colour = rating. Click an area to filter the whole page.</div>${areaRows}<div class="op-legend" style="margin-top:8px">${RK.map(k=>`<span><i style="background:${RC[k]}"></i>${k}</span>`).join('')}</div></article>
+ <article class="card panel"><div class="panel-title">Net loss by month</div><div class="panel-sub">Gross loss less recoveries. Red = ₹3 lakh or more. Click a month.</div><div class="x-bars">${lossBars}</div></article>
+ <article class="card panel"><div class="panel-title">Issue ageing</div><div class="panel-sub" style="margin-bottom:10px">Open issues by how late they are.</div>${ageRows}<div class="panel-title" style="margin-top:16px">Control test results</div><div class="panel-sub" style="margin-bottom:10px">Latest result for each control.</div>${resRows}</article></div>
+ <div class="x-grid">${card('Key risk indicators','Early-warning readings. Border colour = status; click to open the indicator.',`<div style="padding:0 16px 16px"><div class="x-kri">${kriTiles||'<p class="op-note">No indicators for these filters.</p>'}</div></div>`)}${card('Accountability by owner','Open items per person across risks, issues, controls and indicators. Click a row to filter.',ownHtml)}</div>`;
+}
+Object.assign(actions,{
+ 'x-open':b=>openDrawer('metric',b.dataset.key),
+ 'x-area':b=>{XF.area=XF.area===b.dataset.a?'All':b.dataset.a;renderExec()},
+ 'x-owner':b=>{XF.owner=XF.owner===b.dataset.o?'All':b.dataset.o;renderExec()},
+ 'x-reset':()=>{XF.area='All';XF.owner='All';renderExec()},
+ 'x-heat':b=>{UI.heat=b.dataset.m;renderAll()},
+ 'x-print':()=>window.print(),
+ 'x-nudge':b=>{logIt(b.dataset.id,`Management asked ${b.dataset.owner} for a status update.`);save();toast(`Update requested from ${b.dataset.owner} for ${b.dataset.id}.`)},
+ 'x-export':b=>{const m=metric(b.dataset.key);csv('forge-'+b.dataset.key.replace(/[^a-z0-9]+/gi,'-')+'.csv',[['Record','Detail'],...m.rows.map(r=>[r.id,r.sub])],'List exported as CSV.')},
+ 'x-pack':()=>{const d=xData(),ap=S.appetite;csv('forge-board-pack.csv',[['Measure','Value','Detail'],['Risks outside appetite',d.rs.filter(r=>r.score>ap).length,`of ${d.rs.length}; appetite ${ap}`],['Overdue issues',d.issues.filter(isOverdue).length,`${d.issues.filter(i=>i.status!=='Closed').length} open`],['Controls ineffective',d.ctrls.filter(c=>c.result==='Ineffective').length,`${d.ctrls.filter(ctrlDue).length} tests overdue`],['Indicators in red',d.kris.filter(k=>kriStatus(k)==='Red').length,`of ${d.kris.length}`],['Net loss',d.losses.reduce((s,l)=>s+net(l),0),`${d.losses.length} events`],['High-risk third parties',d.vendors.filter(v=>['High','Critical'].includes(vRating(v))).length,`of ${d.vendors.length}`]],'Board pack exported as CSV.')}
+});
+document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.xf;if(k){XF[k]=e.target.value;renderExec()}});
 document.addEventListener('click',e=>{const t=e.target.closest('[data-op]');if(!t||t.tagName==='SELECT'||(t.tagName==='INPUT'&&t.type!=='checkbox'))return;const op=t.dataset.op;if(op==='filter'||op==='appetite')return;if(t.tagName==='INPUT'&&op==='act-toggle'){actions[op](t);return}const fn=actions[op];if(fn)fn(t)});
 document.addEventListener('change',e=>{const t=e.target;if(t.dataset.op==='appetite')actions.appetite(t);else if(t.dataset.op==='filter'){const k=t.dataset.fk;(UI.filters[k]=UI.filters[k]||{})[t.dataset.f]=t.value;renderAll()}});
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset.op==='filter'&&t.tagName==='INPUT'){const k=t.dataset.fk,pos=t.selectionStart;(UI.filters[k]=UI.filters[k]||{})[t.dataset.f]=t.value;renderAll();const n=$(`input[data-fk="${k}"]`);if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch{}}}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeForm()}});
 drawer.addEventListener('click',e=>{if(e.target===drawer)closeDrawer()});fm.addEventListener('click',e=>{if(e.target===fm)closeForm()});
 // refresh data-driven views when the demo user changes (permissions) or the risk register changes
+// ---------- public interface for add-on modules ----------
+const navGroups={};
+function navGroup(label){if(navGroups[label])return navGroups[label];const l=document.createElement('div');l.className='navlabel';l.style.marginTop='22px';l.textContent=label;const n=document.createElement('nav');n.className='nav';intel?(intel.parentNode.insertBefore(l,intel),intel.parentNode.insertBefore(n,intel)):$('.sidebar').insertBefore(n,$('.side-bottom'));return navGroups[label]=n}
+function mount(m){const nav=navGroup(m.group||'MODULES');const b=document.createElement('button');b.dataset.view=m.id;b.innerHTML=`<span class="ico">${m.ico}</span><span class="navtext">${E(m.label)}</span><span class="badge" id="opBadge-${m.id}" style="display:none"></span>`;nav.appendChild(b);b.addEventListener('click',()=>{go(m.id);renderAll()});
+ const sec=document.createElement('section');sec.className='view';sec.id='view-'+m.id;
+ sec.innerHTML=`<div class="pagehead"><div><h1 class="title">${m.title}</h1><div class="subtitle">${m.sub}</div></div><div class="head-actions" id="opHead-${m.id}"></div></div>`+(m.tabs.length>1?`<div class="libtabs" id="opTabs-${m.id}">${m.tabs.map((t,i)=>`<button class="libtab${i?'':' active'}" data-op="tab" data-view="${m.id}" data-tab="${t[0]}">${E(t[1])}</button>`).join('')}</div>`:'')+m.tabs.map((t,i)=>`<div class="op-panel${i?'':' show'}" data-panel="${m.id}:${t[0]}"></div>`).join('');
+ host.appendChild(sec);UI.tab[m.id]=m.tabs[0][0];views.push(m.id);labels[m.id]=m.label;return sec}
+const setBadge=(id,n)=>{const b=$('#opBadge-'+id);if(b){b.textContent=n;b.style.display=n?'':'none'}};
+// shared "record view" layout: status banner, pending, next steps, key facts, linked records
+function detail(o){setDrawer(o.kicker,o.title,`${pendHtml(o.pending||[],o.ok)}${todoHtml(o.todo||[])}<div class="detailgrid">${(o.facts||[]).map(f=>box(f[0],f[1])).join('')}</div>${o.buttons?`<div class="op-btns">${o.buttons}</div>`:''}${o.extra||''}<h4>Linked records</h4>${links(o.links||[])}${o.after||''}`)}
+const dueState=(iso,soon=30)=>{const d=dTo(iso);return d<0?['red',`overdue by ${-d} days (${fmt(iso)})`]:d<=soon?['amber',`due in ${d} days (${fmt(iso)})`]:null};
+Object.assign(GRC,{S:()=>S,UI,TODAY,PROF,E,$,$$,pad,MON,fmt,dayN,dTo,addDays,inr,pill,own,sev,sevK,table,card,kpi,bar,toolbar,flt,match,lk,links,pendHtml,todoHtml,bl,detail,dueState,openDrawer,closeDrawer,setDrawer,openForm,toast,logIt,save,commit,renderAll,actions,go,views,labels,raise,me,people,personOpts,riskOpts,risks,csv,head,panel,nextId,ratingOf,ragK,resK,polK,stK,navGroup,mount,setBadge,ESC,isOverdue,escLevel,badge:v=>badge(v),spark,heatCol,riskLI,riskCoverage,rname,
+ ensure(){let ch=false;for(const k in GRC.seeders)if(S[k]===undefined){S[k]=GRC.seeders[k](PROF);ch=true}if(ch)save()}});
 document.addEventListener('change',e=>{if(e.target.id==='demoUserSwitch')setTimeout(renderAll,0)});
 document.addEventListener('click',e=>{if(e.target.closest('#saveRisk'))setTimeout(renderAll,50)});
 renderAll();
