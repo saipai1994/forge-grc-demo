@@ -277,7 +277,7 @@ const MFG={id:'manufacturing',label:'Manufacturing',org:'India Manufacturing Dem
  adopt:['iso27001','nist-csf2','dpdp','certin','iso22301']};
 
 const PROFILES={manufacturing:MFG,bfsi:BFSI,general:GEN};
-let pid=null;try{pid=(location.hash.match(/profile=(\w+)/)||[])[1]||localStorage.getItem('forgeGrcProfile')}catch{}
+let pid=null;try{pid=((location.hash.match(/^#(?:profile=)?(manufacturing|bfsi|general)$/)||[])[1])||localStorage.getItem('forgeGrcProfile')}catch{}
 if(!PROFILES[pid])pid='bfsi';
 const P=PROFILES[pid];
 GRC.P=P;GRC.PROFILES=PROFILES;GRC.seeds={bfsi:BFSI.seed,general:GEN.seed};
@@ -290,7 +290,7 @@ function setText(sel,t){const e=$(sel);if(e)e.textContent=t}
 // profile switcher in the top bar (all profiles)
 const top=$('.top-actions');
 if(top){const sel=document.createElement('select');sel.className='select';sel.id='profileSwitch';sel.title='Industry profile';sel.style.maxWidth='210px';sel.innerHTML=Object.values(PROFILES).map(p=>`<option value="${p.id}"${p.id===pid?' selected':''}>${p.label}</option>`).join('');
- sel.addEventListener('change',()=>{try{localStorage.setItem('forgeGrcProfile',sel.value)}catch{}location.hash='profile='+sel.value;location.reload()});top.prepend(sel)}
+ sel.addEventListener('change',()=>{try{localStorage.setItem('forgeGrcProfile',sel.value)}catch{}location.hash=sel.value;location.reload()});top.prepend(sel)}
 if(pid!=='manufacturing'){
  // data used by the original app
  risks.splice(0,risks.length,...P.risks);
