@@ -1,4 +1,4 @@
-const {chromium}=require('playwright');const {spawn}=require('child_process');
+const {chromium}=require('playwright');const path=require('path'),fs=require('fs');const {spawn}=require('child_process');
 const R=path.join(__dirname,'..');const {start,idp}=require(R+'/server/mock-idp.js');const MFA=require(R+'/server/mfa.js');
 (async()=>{const ok=(n,v)=>console.log(v?'PASS':'FAIL',n);const errs=[];
  const {url}=await start(9301);const data=fs.mkdtempSync(path.join(require('os').tmpdir(),'forge-sso-'));
