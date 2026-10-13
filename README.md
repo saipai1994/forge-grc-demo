@@ -42,3 +42,8 @@ To add an industry, add a spec in `profiles-a.js` or `profiles-b.js` (see `profi
 ## Notes
 
 Library entries are plain-language summaries for planning and mapping, not legal text. Verify applicability, dates and wording against the official source with your legal and compliance team. Data is stored in the browser (localStorage) per profile.
+
+
+## Drill-down and drill-up
+
+Every list row, KPI card and table opens a record in the shared drawer (`openpages-modules.js`). The drawer keeps a trail: **‹ Back**, clickable breadcrumbs and **↑ Up** to the parent record (`GRC.parents[type](id)`). `drilldown.js` adds the risk, evidence, finding, framework, area, owner and KPI-list views and wires the original pages.
