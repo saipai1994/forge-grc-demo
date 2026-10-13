@@ -175,17 +175,17 @@ gNav.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{go(b.
 // drawer + form modal (reuse the app's modal styling)
 const drawer=document.createElement('div');drawer.className='detailback';drawer.id='opDrawer';drawer.innerHTML='<div class="detailmodal" role="dialog" aria-modal="true"><div class="detailhead"><div><div class="detailkicker" id="opDK"></div><h2 id="opDT"></h2></div><button class="close" data-op="drawer-close" aria-label="Close">×</button></div><div class="op-crumbs" id="opCrumbs"></div><div class="detailbody" id="opDB"></div><div class="detailfooter"><button class="detailclose" data-op="drawer-close">Close</button></div></div>';document.body.appendChild(drawer);
 const fm=document.createElement('div');fm.className='modalback';fm.id='opForm';fm.style.zIndex=30;fm.innerHTML='<div class="modal" style="width:min(620px,100%);max-height:90vh;overflow:auto"><div class="modalhead"><h3 id="opFT"></h3><button class="close" data-op="form-close">×</button></div><div class="modalbody"><div class="op-form" id="opFB"></div></div><div class="modalfoot"><button class="btn" data-op="form-close">Cancel</button><button class="btn primary" id="opFS" data-op="form-submit">Save</button></div></div>';document.body.appendChild(fm);
-GRC.parents={};
+GRC.parents={};GRC.drawerHooks=[];
 function openDrawer(type,id){const cur=UI.drawer,shown=drawer.classList.contains('show');if(shown&&cur&&!(cur.type===type&&cur.id===id)){(UI.stack=UI.stack||[]).push({type:cur.type,id:cur.id,kicker:cur.kicker,title:cur.title})}else if(!shown)UI.stack=[];UI.drawer={type,id};renderDrawer();drawer.classList.add('show');const b=$('#opDB');if(b)b.parentNode.scrollTop=0}
 function closeDrawer(){UI.drawer=null;UI.stack=[];drawer.classList.remove('show')}
 function drawerGo(entry,keep){UI.stack=(UI.stack||[]).slice(0,keep);UI.drawer={type:entry.type,id:entry.id};renderDrawer()}
 function setDrawer(kicker,title,html){$('#opDK').textContent=kicker;$('#opDT').textContent=title;$('#opDB').innerHTML=html;if(UI.drawer){UI.drawer.kicker=kicker;UI.drawer.title=title}renderCrumbs()}
 function renderCrumbs(){const el=$('#opCrumbs'),d=UI.drawer;if(!el||!d)return;const st=UI.stack||[];let par=null;try{par=GRC.parents[d.type]&&GRC.parents[d.type](d.id)}catch(e){}
  if(par&&!(par[0]===d.type&&par[1]===d.id)){const pr=st[st.length-1];if(pr&&pr.type===par[0]&&pr.id===par[1])par=null}else par=null;
- if(!st.length&&!par){el.innerHTML='';el.style.display='none';if(GRC.onDrawer)try{GRC.onDrawer(d)}catch(e){console.warn(e)}return}el.style.display='flex';
+ if(!st.length&&!par){el.innerHTML='';el.style.display='none';(GRC.drawerHooks||[]).forEach(h=>{try{h(d)}catch(e){console.warn(e)}});return}el.style.display='flex';
  const sh=(t,n)=>{t=t||'';return E(t.length>n?t.slice(0,n-2)+'…':t)};
- el.innerHTML=(st.length?`<button class="op-crumb-btn" data-op="drawer-back">‹ Back</button>`:'')+`<div class="op-trail">${st.map((c,i)=>`<button data-op="drawer-crumb" data-i="${i}">${sh(c.title||c.id,26)}</button><i>›</i>`).join('')}<b>${sh(d.title||d.id,30)}</b></div>`+(par?`<button class="op-crumb-btn up" data-op="drawer-up" data-t="${par[0]}" data-id="${E(par[1])}" title="Open the parent record">↑ Up</button>`:'')
- if(GRC.onDrawer)try{GRC.onDrawer(d)}catch(e){console.warn(e)}}
+ el.innerHTML=(st.length?`<button class="op-crumb-btn" data-op="drawer-back">‹ Back</button>`:'')+`<div class="op-trail">${st.map((c,i)=>`<button data-op="drawer-crumb" data-i="${i}">${sh(c.title||c.id,26)}</button><i>›</i>`).join('')}<b>${sh(d.title||d.id,30)}</b></div>`+(par?`<button class="op-crumb-btn up" data-op="drawer-up" data-t="${par[0]}" data-id="${E(par[1])}" title="Open the parent record">↑ Up</button>`:'');
+ (GRC.drawerHooks||[]).forEach(h=>{try{h(d)}catch(e){console.warn(e)}})}
 function openForm(title,fields,label,onSubmit){$('#opFT').textContent=title;$('#opFS').textContent=label;
  $('#opFB').innerHTML=fields.map(f=>{const cls='field'+(f.full||f.type==='textarea'?' full':'');let c;const v=f.value??'';
   if(f.type==='select')c=`<select name="${f.name}">${f.options.map(o=>{const ov=Array.isArray(o)?o[0]:o,ol=Array.isArray(o)?o[1]:o;return `<option value="${E(ov)}"${String(ov)===String(v)?' selected':''}>${E(ol)}</option>`}).join('')}</select>`;
@@ -418,7 +418,8 @@ function renderSnapshot(){
  host.innerHTML=`<div class="panelhead" style="margin:4px 2px 9px"><div><div class="panel-title">Governance &amp; assurance snapshot</div><div class="panel-sub">Issues, controls, indicators, policies and third parties · click a tile to open the module</div></div></div><div class="grid" style="grid-template-columns:repeat(5,1fr)">${t('issues','Open issues',open.length,od?od+' overdue':'none overdue',od?'red':'')}${t('controls','Ineffective controls',bad,'of '+S.controls.length+' in library',bad?'red':'')}${t('kris','KRIs in red',red,'of '+S.kris.length+' indicators',red?'red':'')}${t('policies','Policies needing attention',pol,'overdue review or low attestation',pol?'amber':'')}${t('vendors','High-risk vendors',ven,'of '+S.vendors.length+' third parties',ven?'amber':'')}</div>`;
 }
 function renderBadges(){const set=(id,n)=>{const b=$('#opBadge-'+id);if(b){b.textContent=n;b.style.display=n?'':'none'}};set('issues',S.issues.filter(isOverdue).length);set('controls',S.controls.filter(c=>c.result==='Ineffective').length);set('kris',S.kris.filter(k=>kriStatus(k)==='Red').length);set('policies',S.policies.filter(polOverdue).length);set('vendors',S.vendors.filter(v=>['High','Critical'].includes(vRating(v))).length)}
-function renderAll(){if(GRC.ensure)GRC.ensure();[renderIssues,renderControls,renderKris,renderPolicies,renderVendors,renderSnapshot,renderBadges,renderExec,...GRC.renders].forEach(f=>{try{f()}catch(e){console.error('Module render failed',f.name,e)}});renderDrawer()}
+function renderAll(){if(GRC.ensure)GRC.ensure();const on=GRC.scopeEnter&&GRC.scopeEnter();try{renderAllInner()}finally{if(on)GRC.scopeLeave()}}
+function renderAllInner(){[renderIssues,renderControls,renderKris,renderPolicies,renderVendors,renderSnapshot,renderBadges,renderExec,...GRC.renders].forEach(f=>{try{f()}catch(e){console.error('Module render failed',f.name,e)}});renderDrawer()}
 const commit=()=>{save();renderAll()};
 
 // ---------- exports ----------

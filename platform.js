@@ -20,7 +20,7 @@ const entOpts=()=>[['','— none —'],...O().entities.map(e=>[e.id,e.name])];
 const needAdmin=()=>{if(isAdmin())return false;toast('Only an administrator can change company setup.');return true};
 
 // ---------------------------------------------------------------- module
-G.mount({id:'org',label:'Organisation',ico:'⌂',group:GROUP,title:'Organisation',sub:'Your company profile, legal entities, business units and sites. Records, reports and the board pack use these.',tabs:[['profile','Company profile'],['entities','Legal entities'],['units','Business units'],['sites','Sites'],['import','Import data']]});
+G.mount({id:'org',label:'Organisation',ico:'⌂',group:GROUP,title:'Organisation',sub:'Your company profile, legal entities, business units and sites. Records, reports and the board pack use these.',tabs:[['profile','Company profile'],['entities','Legal entities'],['units','Business units'],['sites','Sites'],['scope','Scope assignment'],['import','Import data']]});
 
 function renderOrg(){
  const o=O(),p=o.profile,adm=isAdmin();
@@ -182,7 +182,7 @@ function packHtml(){
  const tbl=(h,rows,empty)=>`<table><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.join(''):`<tr><td colspan="${h.length}" class="mut">${empty}</td></tr>`}</tbody></table>`;
  const stat=(l,v,sub,k)=>`<div class="st ${k||''}"><div class="v">${v}</div><div class="l">${l}</div><div class="s">${sub||''}</div></div>`;
  const oblGap=obl.filter(x=>/gap|non/i.test(x.status||'')).length;
- return `<div class="bp-page cover"><div><div class="k">Board risk and compliance pack</div><h1>${E(name)}</h1><p>${E(p.legal&&p.legal!==name?p.legal:'')}</p></div><div class="meta">As at ${E(fmt(TODAY))}<br>Prepared by ${E(me().name)}<br>Industry: ${E(((G.PROFILES||{})[p.industry]||{}).label||p.industry)}<br>Entities in scope: ${o.entities.length||'not yet set up'}</div></div>
+ return `<div class="bp-page cover"><div><div class="k">Board risk and compliance pack</div><h1>${E(name)}</h1><p>${E(p.legal&&p.legal!==name?p.legal:'')}</p></div><div class="meta">As at ${E(fmt(TODAY))}<br>Prepared by ${E(me().name)}<br>Industry: ${E(((G.PROFILES||{})[p.industry]||{}).label||p.industry)}<br>Entities in scope: ${o.entities.length||'not yet set up'}${G.scopeLabel&&G.scopeLabel()?'<br>Scope: '+E(G.scopeLabel()):''}</div></div>
  <div class="bp-page"><h2>1. Headlines</h2><div class="sts">${stat('Risks above appetite',out.length,`of ${risks.length} in the register`,out.length?'r':'')}${stat('Open issues',openI.length,`${od.length} overdue`,od.length?'r':'')}${stat('Ineffective controls',bad.length,`of ${s.controls.length}`,bad.length?'r':'')}${stat('Indicators in red',red.length,`${amb.length} amber`,red.length?'r':'')}${stat('Net loss to date',E(inr(net)),`${s.losses.length} events`)}${stat('Obligations with gaps',oblGap,`of ${obl.length} tracked`,oblGap?'a':'')}</div>
  <h2>2. Top risks by residual score</h2>${tbl(['Risk','Area','Residual','Owner','Control coverage'],topR.map(r=>`<tr><td><b>${E(r.id)}</b> ${E(r.name)}</td><td>${E(r.area)}</td><td>${E(r.rating)} (${r.score})</td><td>${E(r.owner)}</td><td>${E(cov(r.id))}</td></tr>`),'No risks recorded.')}</div>
  <div class="bp-page"><h2>3. Issues needing attention</h2>${tbl(['Issue','Severity','Owner','Due','Status'],openI.filter(i=>G.isOverdue(i)||['Critical','High'].includes(i.sev)).slice(0,14).map(i=>`<tr><td><b>${E(i.id)}</b> ${E(i.title)}</td><td>${E(i.sev)}</td><td>${E(i.owner)}</td><td>${E(fmt(i.due))}${G.isOverdue(i)?' (overdue)':''}</td><td>${E(i.status)}</td></tr>`),'No overdue or high-severity issues.')}
@@ -203,7 +203,7 @@ function showPack(){
  #bpOverlay .box{border:1px solid #cbd6e0;border-radius:8px;min-height:200px}#bpOverlay .sign{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:40px;font-size:11px}
  @media print{body.bp-printing>*:not(#bpOverlay){display:none!important}#bpOverlay{position:static;background:#fff;overflow:visible}#bpOverlay .bar{display:none}#bpOverlay .bp-page{box-shadow:none;margin:0;width:auto;page-break-after:always;min-height:0}#bpOverlay .cover{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
  @page{size:A4;margin:14mm}</style>
- <div class="bar"><span>Board pack preview · use Print and choose “Save as PDF”</span><span><button style="background:#17766A;color:#fff" id="bpPrint">Print / save as PDF</button> <button style="background:#fff;color:#14202E" id="bpClose">Close</button></span></div>${packHtml()}`;
+ <div class="bar"><span>Board pack preview · use Print and choose “Save as PDF”</span><span><button style="background:#17766A;color:#fff" id="bpPrint">Print / save as PDF</button> <button style="background:#fff;color:#14202E" id="bpClose">Close</button></span></div>${(()=>{const on=G.scopeEnter&&G.scopeEnter();try{return packHtml()}finally{if(on)G.scopeLeave()}})()}`;
  document.body.appendChild(ov);document.body.classList.add('bp-printing');
  ov.querySelector('#bpClose').onclick=()=>{ov.remove();document.body.classList.remove('bp-printing')};
  ov.querySelector('#bpPrint').onclick=()=>window.print();

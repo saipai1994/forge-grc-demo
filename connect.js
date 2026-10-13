@@ -202,7 +202,7 @@ async function onDrawer(d){
  box.innerHTML=`<h4>Files</h4>${files.length?files.map(f=>`<div class="op-li"><div><b>${E(f.name)}</b><div class="riskarea">${sz(f.size)} · ${E(f.by)} · ${E(new Date(f.ts).toLocaleDateString())}</div></div><span><button class="op-mini" data-gcf="${f.id}" data-name="${E(f.name)}">Download</button>${user.role==='Administrator'||user.role==='Business user'?` <button class="op-mini" data-gcd="${f.id}">Remove</button>`:''}</span></div>`).join(''):'<p class="op-note">No files attached.</p>'}<label class="op-mini p" style="display:inline-block;cursor:pointer;margin-top:6px">Attach a file<input type="file" id="gcUp" style="display:none"></label><span class="op-note" style="margin-left:8px">PDF, images, Office files, CSV, text · up to 10 MB</span>`;
 }
 const UIdrawerIs=d=>G.UI.drawer&&G.UI.drawer.id===d.id&&G.UI.drawer.type===d.type;
-G.onDrawer=onDrawer;
+G.drawerHooks.push(onDrawer);
 document.addEventListener('change',async e=>{if(e.target.id!=='gcUp'||!e.target.files[0])return;const f=e.target.files[0],d=G.UI.drawer;if(!d)return;
  if(f.size>10*1024*1024){toast('Files can be up to 10 MB.');return}
  const r=await fetch(`${API}/api/files?profile=${encodeURIComponent(PROF)}&ref=${encodeURIComponent(d.id)}&name=${encodeURIComponent(f.name)}`,{method:'POST',headers:{authorization:'Bearer '+token},body:f});
