@@ -27,10 +27,10 @@ const n=await R.textContent('#gcBellN');ok('riya sees a notification ('+n+')',n=
 await R.click('#gcBellBtn');ok('notification text',/assigned to you/.test(await R.textContent('#gcBellBox')));
 // file upload on the issue
 await A.evaluate(()=>{const i=GRC.S().issues[0];GRC.openDrawer('issue',i.id)});await A.waitForSelector('#gcUp',{state:'attached',timeout:5000});
-require('fs').writeFileSync('/tmp/ev.pdf','%PDF-1.4 evidence');await A.setInputFiles('#gcUp','/tmp/ev.pdf');await A.waitForTimeout(1200);
+require('fs').writeFileSync('/tmp/ev.pdf','%PDF-1.4 evidence');await A.setInputFiles('#gcUp','/tmp/ev.pdf');await A.waitForFunction(()=>/ev\.pdf/.test((document.getElementById('gcFiles')||{}).textContent||''),null,{timeout:8000}).catch(()=>{});
 ok('file listed on record',/ev\.pdf/.test(await A.textContent('#gcFiles')));
 // Riya sees it too and can download
-await R.evaluate(()=>{document.getElementById('gcBellBox').style.display='none';const i=GRC.S().issues[0];GRC.openDrawer('issue',i.id)});await R.waitForTimeout(1200);
+await R.evaluate(()=>{document.getElementById('gcBellBox').style.display='none';const i=GRC.S().issues[0];GRC.openDrawer('issue',i.id)});await R.waitForFunction(()=>/ev\.pdf/.test((document.getElementById('gcFiles')||{}).textContent||''),null,{timeout:8000}).catch(()=>{});
 ok('colleague sees the file',/ev\.pdf/.test(await R.textContent('#gcFiles')));
 // company setup syncs
 await A.evaluate(()=>{GRC.S().org.profile.name='Acme Finance';GRC.S().org.profile.done=true;GRC.S().org.entities.push({id:'ENT-001',name:'Acme Finance Ltd',type:'Parent company',country:'India',regNo:'',regulators:'RBI',owner:''});GRC.save()});
