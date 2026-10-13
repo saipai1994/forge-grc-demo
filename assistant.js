@@ -73,7 +73,7 @@ const css=document.createElement('style');css.textContent=`
 #asPanel form button{border:0;background:#0070F2;color:#fff;border-radius:10px;padding:0 16px;font-weight:700;cursor:pointer}
 #asPanel form button:disabled{background:#9db8dd}
 #asPanel .note{font-size:11.5px;color:#556B82;padding:0 16px 8px}
-#asPanel .src{font-size:11px;color:#6A7B8C;margin-top:6px}
+#asPanel .src{font-size:11px;color:#627382;margin-top:6px}
 @media print{#asPanel{display:none!important}}`;document.head.appendChild(css);
 const panel=document.createElement('aside');panel.id='asPanel';panel.setAttribute('role','complementary');panel.setAttribute('aria-label','Assistant');
 panel.innerHTML=`<header><div><h3>✳ Assistant</h3><small id="asMode"></small></div><button class="btn" data-as="close" aria-label="Close">✕</button></header><div class="log" id="asLog" aria-live="polite"></div><div class="chips" id="asChips"></div><div class="note" id="asNote"></div><form id="asForm"><textarea id="asQ" rows="1" placeholder="Ask about your risks, controls, issues…" aria-label="Question"></textarea><button type="submit" id="asSend">Ask</button></form>`;

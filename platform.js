@@ -25,7 +25,7 @@ G.mount({id:'org',label:'Organisation',ico:'⌂',group:GROUP,title:'Organisation
 function renderOrg(){
  const o=O(),p=o.profile,adm=isAdmin();
  head('org',adm?`<button class="btn" data-op="org-wizard"><span class="btnico">✦</span>${p.done?'Run setup again':'Set up company'}</button><button class="btn primary" data-op="board-pack"><span class="btnico">▤</span>Board pack</button>`:'<button class="btn primary" data-op="board-pack"><span class="btnico">▤</span>Board pack</button>');
- const row=(l,v)=>`<tr style="cursor:default"><td style="width:220px;color:#778293">${l}</td><td>${v?E(v):'<span style="color:#a3adb9">Not set</span>'}</td></tr>`;
+ const row=(l,v)=>`<tr style="cursor:default"><td style="width:220px;color:#677280">${l}</td><td>${v?E(v):'<span style="color:#696f77">Not set</span>'}</td></tr>`;
  const prof=(G.PROFILES||{})[p.industry];
  panel('org','profile').innerHTML=(p.done?'':`<div class="op-banner amber" style="margin-bottom:14px"><div><b>Company setup is not finished</b><div>Add your company details, first legal entity and the framework packs that apply to you. It takes about two minutes.</div></div><button class="op-mini p" data-op="org-wizard">Start setup</button></div>`)+
   `<div class="op-kpis">${kpi('Legal entities',o.entities.length,'in scope of this workspace','',o.entities)}${kpi('Business units',o.units.length,'across all entities','',o.units)}${kpi('Sites',o.sites.length,'locations','',o.sites)}${kpi('Data',p.mode==='clean'?'Clean start':'Sample data',p.mode==='clean'?'only your own records':'demo records are loaded')}</div>`+
@@ -198,8 +198,8 @@ function showPack(){
  #bpOverlay .bp-page{background:#fff;width:min(820px,calc(100% - 24px));margin:16px auto;padding:44px 48px;box-shadow:0 2px 14px #0002;box-sizing:border-box;min-height:600px}
  #bpOverlay h1{font:800 34px Manrope,Arial;margin:8px 0}#bpOverlay h2{font:800 17px Manrope,Arial;margin:26px 0 10px;color:#17766A}#bpOverlay h2:first-child{margin-top:0}
  #bpOverlay .cover{display:flex;flex-direction:column;justify-content:space-between;background:#0F1B2B;color:#F3F5F7}#bpOverlay .cover .k{font:500 11px "DM Mono",monospace;letter-spacing:2px;text-transform:uppercase;color:#E3A33B}#bpOverlay .cover .meta{font-size:12px;line-height:1.8;color:#9fb0c2}
- #bpOverlay table{width:100%;border-collapse:collapse;font-size:11.5px;margin:6px 0 14px}#bpOverlay th{text-align:left;font:700 10px "DM Mono",monospace;text-transform:uppercase;color:#56667A;border-bottom:2px solid #cbd6e0;padding:6px 8px}#bpOverlay td{padding:7px 8px;border-bottom:1px solid #e6ecf1;vertical-align:top}#bpOverlay .mut{color:#8a95a3}
- #bpOverlay .sts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px}#bpOverlay .st{border:1px solid #dbe3ea;border-radius:8px;padding:12px}#bpOverlay .st .v{font:800 26px Manrope,Arial}#bpOverlay .st .l{font-size:11px;font-weight:700}#bpOverlay .st .s{font-size:10.5px;color:#778293}#bpOverlay .st.r{border-color:#e9b3ae;background:#fdf3f2}#bpOverlay .st.a{border-color:#ecd18f;background:#fffaf0}
+ #bpOverlay table{width:100%;border-collapse:collapse;font-size:11.5px;margin:6px 0 14px}#bpOverlay th{text-align:left;font:700 10px "DM Mono",monospace;text-transform:uppercase;color:#56667A;border-bottom:2px solid #cbd6e0;padding:6px 8px}#bpOverlay td{padding:7px 8px;border-bottom:1px solid #e6ecf1;vertical-align:top}#bpOverlay .mut{color:#69717d}
+ #bpOverlay .sts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px}#bpOverlay .st{border:1px solid #dbe3ea;border-radius:8px;padding:12px}#bpOverlay .st .v{font:800 26px Manrope,Arial}#bpOverlay .st .l{font-size:11px;font-weight:700}#bpOverlay .st .s{font-size:10.5px;color:#677280}#bpOverlay .st.r{border-color:#e9b3ae;background:#fdf3f2}#bpOverlay .st.a{border-color:#ecd18f;background:#fffaf0}
  #bpOverlay .box{border:1px solid #cbd6e0;border-radius:8px;min-height:200px}#bpOverlay .sign{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:40px;font-size:11px}
  @media print{body.bp-printing>*:not(#bpOverlay){display:none!important}#bpOverlay{position:static;background:#fff;overflow:visible}#bpOverlay .bar{display:none}#bpOverlay .bp-page{box-shadow:none;margin:0;width:auto;page-break-after:always;min-height:0}#bpOverlay .cover{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
  @page{size:A4;margin:14mm}</style>
@@ -214,13 +214,15 @@ actions['board-pack']=showPack;
 G.mount({id:'guide',label:'Guide',ico:'?',group:GROUP,title:'Guide',sub:'How to get started, who can do what, and how the main ideas fit together.',tabs:[['start','Getting started'],['roles','Roles and access'],['terms','Key terms']]});
 function renderGuide(){
  const step=(n,t,d,op,lab)=>`<div class="op-li"><div><b>${n}. ${t}</b><div class="riskarea">${d}</div></div>${op?`<button class="op-mini p" data-op="${op}"${op==='goto'?' data-v="'+lab[1]+'"':''}>${lab[0]}</button>`:''}</div>`;
- panel('guide','start').innerHTML=card('Set up in six steps','Most teams are working with real records within an hour.',
-  step(1,'Describe your company','Name, industry, regulators, first legal entity and head office.','org-wizard',['Run setup'])+
+ panel('guide','start').innerHTML=card('Set up in eight steps','Most teams are working with real records within an hour.',
+  step(1,'Describe your company','Name, industry, regulators, first legal entity and head office. Choose sample data or a clean start.','org-wizard',['Run setup'])+
   step(2,'Invite your team','Create accounts and give each person a role. People you add can then be named as owners.','goto',['Users and access','users'])+
-  step(3,'Adopt the frameworks that apply','Pick a pack in Standards and data. Obligations appear in the register ready to be assessed.','goto',['Open Standards and data','hub'])+
-  step(4,'Bring in what you already have','Import risks, controls, issues, vendors and policies from your spreadsheets.','goto',['Import data','org'])+
-  step(5,'Link controls to risks, then test them','Coverage and gaps show up on the dashboard as soon as controls are mapped.','goto',['Open Controls','controls'])+
-  step(6,'Report','The board pack turns the live records into a printable PDF.','board-pack',['Board pack']));
+  step(3,'Set your structure','Add entities, units and sites, then tag records so the whole app can be viewed by scope.','goto',['Organisation','org'])+
+  step(4,'Adopt the frameworks that apply','Pick a pack in Standards and data. Obligations appear in the register ready to be assessed.','goto',['Open Standards and data','libraries'])+
+  step(5,'Bring in what you already have','Import risks, controls, issues, vendors and policies from your spreadsheets.','goto',['Import data','org'])+
+  step(6,'Link controls to risks, then test them','Coverage and gaps show up on Home as soon as controls are mapped.','goto',['Open Controls','controls'])+
+  step(7,'Decide, accept or treat','Request a risk acceptance or a treatment plan for anything above appetite. Approvals wait in one queue.','goto',['Risk treatment','treat'])+
+  step(8,'Report','The board pack turns the live records into a printable PDF.','board-pack',['Board pack']));
  const R=[['Administrator','Everything, including company setup, users, appetite and deletions'],['Business user','Create and update records; cannot change appetite or company setup; cannot delete'],['Function user','Update records for their own area; also cannot change policies or vendors'],['Auditor','Read everything; can record audits and issues; cannot change anything else']];
  panel('guide','roles').innerHTML=card('What each role can do','Enforced on the server when you are signed in',table(['Role','Allowed'],R.map(r=>`<tr style="cursor:default"><td><b>${r[0]}</b></td><td>${r[1]}</td></tr>`)))+`<p class="op-note">Every change is recorded in the Audit trail with who made it, when, and what changed.</p>`;
  const T=[['Inherent risk','The risk before any controls are considered.'],['Residual risk','What is left after controls. Compared with appetite.'],['Risk appetite','The residual score above which a risk needs action or formal acceptance.'],['Control','A step that prevents, detects or corrects a problem. Tested on a schedule.'],['Issue','A problem that must be fixed, with an owner, due date and actions.'],['KRI','Key risk indicator: a number watched against amber and red thresholds.'],['RCSA','Risk and control self-assessment: owners rate their own risks and controls; the second line challenges.'],['Obligation','A requirement from a law, regulation or standard that you map controls to.']];
@@ -237,7 +239,7 @@ G.renders.push(banner);
 
 // ---------------------------------------------------------------- small screens and keyboard use
 const st=document.createElement('style');st.textContent=`
-a.gc-skip{position:absolute;left:-999px;top:6px;background:#17766A;color:#fff;padding:8px 12px;border-radius:6px;z-index:100000;font:600 12px "DM Sans"}a.gc-skip:focus{left:8px}
+#asBtn,#rptBtn,.top-actions .btn{white-space:nowrap}a.gc-skip{position:absolute;left:-999px;top:6px;background:#17766A;color:#fff;padding:8px 12px;border-radius:6px;z-index:100000;font:600 12px "DM Sans"}a.gc-skip:focus{left:8px}
 button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible,a:focus-visible,tr[data-op]:focus-visible{outline:2px solid #17766A;outline-offset:2px}
 tr[data-op]:focus-visible,.drillable:focus-visible{background:#eef6f4}
 @media(max-width:720px){
@@ -252,6 +254,15 @@ if(!document.querySelector('.gc-skip')){const a=document.createElement('a');a.cl
 // rows that open a record can be reached and opened from the keyboard
 function keyboardRows(){document.querySelectorAll('tbody tr[data-op="open"],#priorityRows tr,#allRiskRows tr,#evidenceRows tr,#findingRows tr,#frameworkRows tr').forEach(tr=>{if(!tr.hasAttribute('tabindex')){tr.tabIndex=0;tr.setAttribute('role','button')}});document.querySelectorAll('.op-kpi.drillable,.op-tile.drillable,.metric').forEach(c=>{if(!c.hasAttribute('tabindex')){c.tabIndex=0;c.setAttribute('role','button')}})}
 G.renders.push(keyboardRows);
+// give every form control a name that screen readers can announce
+function nameControls(){document.querySelectorAll('select,input:not([type=hidden]),textarea').forEach(el=>{
+ if(el.getAttribute('aria-label')||el.getAttribute('aria-labelledby'))return;
+ if(el.id&&document.querySelector(`label[for="${CSS.escape(el.id)}"]`))return;if(el.closest('label'))return;
+ const first=el.tagName==='SELECT'&&el.options[0]?el.options[0].textContent.trim():'';
+ const n=el.title||el.getAttribute('placeholder')||(el.tagName==='SELECT'&&first&&/^(all|any|\u2014)/i.test(first)?'Filter: '+first:'')||(el.dataset&&el.dataset.f?'Filter '+el.dataset.f:'')||el.name||el.id||first||'Field';
+ el.setAttribute('aria-label',n)})}
+function nameRegions(){document.querySelectorAll('.tablewrap').forEach(t=>{if(!t.hasAttribute('tabindex'))t.tabIndex=0;t.setAttribute('role','region');if(!t.getAttribute('aria-label'))t.setAttribute('aria-label','Table')})}
+G.renders.push(nameControls,nameRegions);
 document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('tr[tabindex],.op-kpi[tabindex],.op-tile[tabindex],.metric[tabindex]')){e.preventDefault();e.target.click()}});
 G.org=O;
 G.renderAll();

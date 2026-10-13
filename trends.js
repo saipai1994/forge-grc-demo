@@ -63,7 +63,7 @@ G.trendOf=(key,days)=>{
 // ---------------------------------------------------------------- Settings tab (Organisation)
 function renderSettings(){
  const pn=panel('org','settings');if(!pn)return;const s=S(),adm=isAdmin(),c=G.cur(),t=k=>G.target(k);
- const row=(l,v,h)=>`<tr style="cursor:default"><td style="width:260px;color:#778293">${l}${h?`<div class="riskarea">${h}</div>`:''}</td><td>${v}</td></tr>`;
+ const row=(l,v,h)=>`<tr style="cursor:default"><td style="width:260px;color:#677280">${l}${h?`<div class="riskarea">${h}</div>`:''}</td><td>${v}</td></tr>`;
  const dateMode=(()=>{try{return localStorage.getItem('forgeGrcDate')==='real'?'real':'demo'}catch{return 'demo'}})();
  pn.innerHTML=card('Settings','Used by dashboards, tiles and reports',table(['Setting','Value'],[
   row('Risk appetite',`Residual score above ${s.appetite}`,'Risks above this show as outside appetite'),

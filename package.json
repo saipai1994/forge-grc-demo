@@ -13,5 +13,9 @@
     "feed": "node server/feed-sim.js",
     "test": "node server/test.js && node server/test-mail.js && node server/test-oidc.js",
     "test:browser": "node tests/run.js"
+  },
+  "devDependencies": {
+    "axe-core": "^4.14.0",
+    "playwright": "^1.64.0"
   }
 }
