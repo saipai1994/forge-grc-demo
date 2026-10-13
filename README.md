@@ -22,7 +22,9 @@ To add an industry, add a spec in a file in `sectors/` (see `profile-kit.js` for
 
 ## What is in the app
 
-- Standards & data: built-in library of frameworks, laws and directions with industry packs, clause-level detail for the major standards, and search.
+- Standards & data: built-in library of 278 frameworks and about 2,000 requirements (laws, regulator directions, frameworks and standards) with industry and country packs, clause-level detail for the major standards, and search.
+- Jurisdiction selector: India, Australia and New Zealand, Middle East (UAE, Saudi Arabia, Qatar, Bahrain, Oman, Kuwait), Europe (EU, UK, Switzerland), Philippines, United States, Canada, or all. It filters the library (global standards always show) and sets the reporting currency.
+- Content review: each framework shows a review panel (status, flagged details, possibly missing items). Library text is plain-language and was written from secondary sources; confirm every item against the official text. `node tools/validate-library.js` and `node tools/validate-profile.js` check structure and depth; `node tools/build-review.js` rebuilds the review data.
 - Compliance: obligations register and crosswalk, regulatory change, privacy operations.
 - Risk: risk register, RCSA, issues and actions, controls and testing, KRIs and loss events, policies, third parties, executive view.
 - Resilience and technology: operational resilience (DORA / RBI style), cyber and technology risk, business continuity.
@@ -37,7 +39,8 @@ To add an industry, add a spec in a file in `sectors/` (see `profile-kit.js` for
 | `regulatory-library*.js`, `regulatory-clauses.js` | Built-in frameworks, sector frameworks, clause-level detail |
 | `profile-kit.js`, `sectors/*.js`, `industry-profiles.js` | Industry profiles and the profile switcher |
 | `openpages-modules.js` | Core engine: issues, controls, KRIs, policies, vendors, executive view |
-| `compliance-modules.js`, `privacy-resilience.js`, `risk-ops.js`, `rcsa.js`, `sector.js`, `standards-hub.js` | Feature modules |
+| `compliance-modules.js`, `privacy-resilience.js`, `risk-ops.js`, `rcsa.js`, `sector.js`, `standards-hub.js`, `jurisdiction.js`, `library-review.js` | Feature modules |
+| `regulatory-library*.js`, `regulatory-review.js` | Built-in regulatory library by region and the content-review data |
 
 ## Notes
 
