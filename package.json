@@ -1,0 +1,14 @@
+{
+  "name": "forge-grc",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Forge GRC: governance, risk and compliance workspace with shared data, sign-in, audit trail and live updates.",
+  "license": "UNLICENSED",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node server/server.js",
+    "demo": "FORGE_TODAY=2026-10-12 node server/server.js",
+    "feed": "node server/feed-sim.js",
+    "test": "node server/test.js"
+  }
+}

@@ -47,3 +47,24 @@ Library entries are plain-language summaries for planning and mapping, not legal
 ## Drill-down and drill-up
 
 Every list row, KPI card and table opens a record in the shared drawer (`openpages-modules.js`). The drawer keeps a trail: **‹ Back**, clickable breadcrumbs and **↑ Up** to the parent record (`GRC.parents[type](id)`). `drilldown.js` adds the risk, evidence, finding, framework, area, owner and KPI-list views and wires the original pages.
+
+
+## Connected mode (shared data, sign-in, audit trail, live updates)
+
+Requires Node 22.13 or later. No packages to install.
+
+```
+npm run demo          # app + API at http://localhost:8080 (demo date matches the sample data)
+npm run feed          # in a second terminal: a pretend monitoring system sends indicator readings
+npm test              # checks for the sync, permissions, ingest and audit trail
+```
+
+Open http://localhost:8080 and sign in (demo accounts are shown on the sign-in panel: morgan, jordan, priya, evan, sam and audrey @forge.demo, password `forge-demo`). Open it in two browsers as different people to see changes appear live. Without the server (GitHub Pages, a shared file) the app runs as the browser-only demo.
+
+- `server/server.js`: static files, sign-in (scrypt, signed tokens), per-role permissions enforced on the server, record-level sync with conflict handling, audit trail (SQLite), server-sent events for live updates, and `POST /api/ingest/kri` (header `x-api-key`) for source systems.
+- `sync-core.js`: shared by browser and server; turns state changes into record-level operations.
+- `connect.js`: sign-in screen, live status, sync and the Audit trail module.
+- Environment: `PORT`, `FORGE_DATA` (database folder), `FORGE_SECRET`, `FORGE_INGEST_KEY`, `FORGE_DEMO_PASSWORD`, `FORGE_SHOW_DEMO_LOGINS=0` (hide the demo hint), `FORGE_TODAY`.
+- `Dockerfile` runs it in a container; mount a volume at `/data`.
+
+Not yet covered: single sign-on, organisation and entity setup, risks created in the legacy form (they stay in the browser), file uploads for evidence, email alerts, per-field merge of two people editing the same record at once (last write wins), and database backups. See the readiness review.

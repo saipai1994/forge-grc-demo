@@ -106,7 +106,7 @@ function seedMfg(){
 }
 let S;try{const raw=localStorage.getItem(KEY);S=raw?JSON.parse(raw):null}catch{S=null}
 if(!S||S.v!==1)S=seed();
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}if(GRC.onSave)GRC.onSave()};
 const UI={tab:{},drawer:null,filters:{},heat:'residual'};
 function logIt(ref,txt){S.log.unshift({t:TODAY,who:me().name,ref,txt});S.log.length=Math.min(S.log.length,300)}
 const nextId=(k,prefix,w)=>prefix+String(S.seq[k]++).padStart(w,'0');
