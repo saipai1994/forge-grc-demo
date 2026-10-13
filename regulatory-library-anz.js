@@ -232,7 +232,7 @@ L.frameworks.push(
  ['Separation','Separation plans for foreign-owned banks','Foreign-owned banks should maintain plans for separating their New Zealand operations from group providers, as the policy requires.','RES'],
  ['Assurance','Monitor providers and test arrangements','Monitor provider performance, test continuity and separation arrangements, and report to the board and to RBNZ as required.','TEST']]},
 
-{id:'nz-cofi',code:'CoFI regime',name:'Financial Markets (Conduct of Institutions) Amendment Act 2022 (CoFI regime)',kind:'Law',region:'New Zealand',jur:['NZ'],sectors:['BFSI','Insurance'],issuer:'Financial Markets Authority (FMA)',
+{id:'nz-cofi',code:'CoFI regime',name:'Financial Markets (Conduct of Institutions) Amendment Act (CoFI regime)',kind:'Law',region:'New Zealand',jur:['NZ'],sectors:['BFSI','Insurance'],issuer:'Financial Markets Authority (FMA)',
  summary:'The Conduct of Financial Institutions regime requires registered banks, licensed insurers and licensed non-bank deposit takers that provide relevant services to retail customers to hold an FMA licence and treat customers fairly. It came fully into effect on 31 March 2025. Intermediaries such as brokers and advisers are also affected.',
  verify:'Confirm the licence conditions, the fair conduct principle wording, the incentives rules (including what is restricted), the intermediary rules and the FMA’s expectations, using the Act, regulations and FMA guidance.',
  obl:[
@@ -291,7 +291,7 @@ L.frameworks.push(
  ['Use and disclosure','Use and disclose only as the Code permits','Use and disclose health information only for the purposes the rules permit, such as health care, or as authorised by the patient.','PRIV'],
  ['Breach','Notify privacy breaches under the Privacy Act','Health agencies are also subject to the Privacy Act 2020 notifiable privacy breach scheme. Keep breach response procedures ready.','INC']]},
 
-{id:'nz-hswa',code:'HSWA 2015 (NZ)',name:'Health and Safety at Work Act 2015 (New Zealand) and Health and Safety at Work Amendment Act 2026',kind:'Law',region:'New Zealand',jur:['NZ'],sectors:['All','Manufacturing / OT','Mining & metals','Real estate & construction','Transport & logistics','Energy & utilities'],issuer:'WorkSafe New Zealand / Ministry of Business, Innovation and Employment',
+{id:'nz-hswa',code:'HSWA 2015 (NZ)',name:'Health and Safety at Work Act 2015 (New Zealand) and Health and Safety at Work Amendment Bill (passed 2026)',kind:'Law',region:'New Zealand',jur:['NZ'],sectors:['All','Manufacturing / OT','Mining & metals','Real estate & construction','Transport & logistics','Energy & utilities'],issuer:'WorkSafe New Zealand / Ministry of Business, Innovation and Employment',
  summary:'New Zealand’s primary health and safety law, placing duties on persons conducting a business or undertaking (PCBUs) and their officers. An amendment bill focused on critical risks passed on 1 July 2026, with changes due to take effect on 1 April 2027, and WorkSafe is preparing guidance.',
  verify:'Confirm the content and commencement of the amendment (including any change to officers’ due diligence, critical risk definitions and notifiable event rules) on legislation.govt.nz and WorkSafe, as these were only partly confirmed.',
  obl:[
