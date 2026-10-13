@@ -53,11 +53,14 @@ if(view){
  }
 }
 // ---------------------------------------------------------------- rendering
-const inPack=f=>st.pack==='All'||(PACKS.find(p=>p[0]===st.pack)||[,,[]])[2].includes(f.id);
+const jurOk=f=>!G.jur||G.jur.match(f);
+const packShown=p=>{if(p[0]===st.pack)return true;const fs=p[2].map(FW).filter(Boolean);return !fs.length||fs.filter(jurOk).length/fs.length>=0.5};
+const inPack=f=>jurOk(f)&&(st.pack==='All'||(PACKS.find(p=>p[0]===st.pack)||[,,[]])[2].includes(f.id));
 function renderHub(){
  const top=document.getElementById('hubTop'),body=document.getElementById('hubBody');if(!top||!body)return;
  const totalC=LIB.frameworks.reduce((n,f)=>n+cl(f).length+nObl(f),0);
- top.innerHTML=`<p class="hub-count" style="margin-top:0">${LIB.frameworks.length} frameworks · ${LIB.frameworks.reduce((n,f)=>n+nObl(f),0)} key requirements · ${LIB.frameworks.reduce((n,f)=>n+cl(f).length,0)} clause-level entries (ISO 27001, SOC 2, COBIT, COSO, ISO 31000, ISO 42001, GDPR, HIPAA, PCI DSS). Choose an industry, then open or adopt.</p><div class="hub-chips"><button class="hub-chip${st.pack==='All'?' on':''}" data-op="hub-pack" data-p="All">All industries<small>${LIB.frameworks.length}</small></button>${PACKS.map(p=>`<button class="hub-chip${st.pack===p[0]?' on':''}" data-op="hub-pack" data-p="${E(p[0])}">${E(p[0])}<small>${p[2].length}</small></button>`).join('')}</div>`;
+ const vis=LIB.frameworks.filter(jurOk),hid=LIB.frameworks.length-vis.length;
+ top.innerHTML=`<p class="hub-count" style="margin-top:0">${G.jur?'<b>'+E(G.jur.label())+'</b> · ':''}${vis.length} frameworks · ${vis.reduce((n,f)=>n+nObl(f),0)} key requirements · ${vis.reduce((n,f)=>n+cl(f).length,0)} clause-level entries. ${hid?`${hid} more apply to other jurisdictions (<button class="op-link" data-op="jur-all">show all jurisdictions</button>). `:''}Choose an industry, then open or adopt.</p><div class="hub-chips"><button class="hub-chip${st.pack==='All'?' on':''}" data-op="hub-pack" data-p="All">All industries<small>${vis.length}</small></button>${PACKS.filter(packShown).map(p=>`<button class="hub-chip${st.pack===p[0]?' on':''}" data-op="hub-pack" data-p="${E(p[0])}">${E(p[0])}<small>${p[2].map(FW).filter(f=>f&&jurOk(f)).length}</small></button>`).join('')}</div>`;
  const pk=PACKS.find(p=>p[0]===st.pack),q=st.q.trim().toLowerCase();
  let html='';
  if(pk){const fs=pk[2].map(FW).filter(Boolean),un=fs.filter(f=>!adopted(f.id)),reqs=un.reduce((n,f)=>n+nObl(f),0);html+=`<article class="card hub-pack"><div><div class="panel-title">${E(pk[0])} pack</div><p>${E(pk[1])}</p><div class="names">${fs.map(f=>`<button class="op-link" data-op="open" data-t="fw" data-id="${f.id}">${E(f.code)}</button>`).join('')}</div></div><div style="display:flex;gap:8px;flex-direction:column;align-items:flex-end"><button class="op-mini p" data-op="pack-adopt" data-p="${E(pk[0])}"${un.length?'':' disabled'}>${un.length?`Adopt pack · ${un.length} framework${un.length>1?'s':''}, ${reqs} requirements`:'Pack fully adopted'}</button><button class="op-mini" data-op="pack-export" data-p="${E(pk[0])}">↓ Export pack requirements</button></div></article>`}
@@ -71,7 +74,7 @@ function renderHub(){
  body.innerHTML=html;
 }
 function cardHtml(f){const a=adopted(f.id),mine=(S().obl||[]).filter(o=>o.fw===f.id),cp=mine.length?Math.round(mine.filter(o=>o.status==='Compliant').length/mine.length*100):0;
- return `<article class="card hub-card" data-op="open" data-t="fw" data-id="${f.id}"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h3>${E(f.code)}</h3>${a?pill('Adopted','green'):''}</div><div class="m">${E(f.kind)} · ${E(f.region)} · ${E(f.issuer)}</div><div class="s">${E(f.summary)}</div>${a?`<div>${bar(cp,cp>=85?'':cp>=60?'amber':'red')}<div class="op-note" style="margin-top:3px">${cp}% compliant · ${mine.length} obligations</div></div>`:''}<div class="f"><span class="badgepill pill-blue">${nObl(f)} key requirements</span>${cl(f).length?`<span class="badgepill pill-green">${cl(f).length} clauses</span>`:''}</div></article>`}
+ return `<article class="card hub-card" data-op="open" data-t="fw" data-id="${f.id}"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h3>${E(f.code)}</h3>${a?pill('Adopted','green'):''}${(window.GRC_REVIEW&&(window.GRC_REVIEW.items[f.id]||{}).status==='INCORRECT')?pill('Needs update','amber'):''}</div><div class="m">${E(f.kind)} · ${E(f.region)} · ${E(f.issuer)}</div><div class="s">${E(f.summary)}</div>${a?`<div>${bar(cp,cp>=85?'':cp>=60?'amber':'red')}<div class="op-note" style="margin-top:3px">${cp}% compliant · ${mine.length} obligations</div></div>`:''}<div class="f"><span class="badgepill pill-blue">${nObl(f)} key requirements</span>${cl(f).length?`<span class="badgepill pill-green">${cl(f).length} clauses</span>`:''}</div></article>`}
 G.renders.push(renderHub);
 document.addEventListener('input',e=>{if(e.target.id==='hubSearch'){st.q=e.target.value;renderHub()}});
 // ---------------------------------------------------------------- drawers (replace the basic framework drawer)

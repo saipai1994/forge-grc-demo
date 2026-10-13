@@ -1,0 +1,338 @@
+// Regulatory library: Australia and New Zealand. Plain-language summaries for planning and mapping, NOT legal text.
+// Each framework carries a verify note: confirm wording, dates and applicability against the official source.
+(function(){
+const L=window.GRC_LIB;if(!L)return;
+L.frameworks.push(
+// ---------------------------------------------------------------- AUSTRALIA
+{id:'au-privacy-act',code:'Privacy Act 1988 (Cth)',name:'Privacy Act 1988 (Cth), Australian Privacy Principles, Notifiable Data Breaches scheme and 2024 amendments',kind:'Law',region:'Australia',jur:['AU'],sectors:['All','Privacy (cross-industry)'],issuer:'Parliament of Australia / Office of the Australian Information Commissioner (OAIC)',
+ summary:'Australia’s federal privacy law. The 13 Australian Privacy Principles (APPs) govern how Commonwealth agencies and most private organisations (generally those with annual turnover of A$3 million or more, plus some smaller categories) handle personal information. The Privacy and Other Legislation Amendment Act 2024 added new enforcement powers, a statutory tort, a Children’s Online Privacy Code and automated-decision transparency; further reform tranches were still being progressed.',
+ verify:'Confirm against the Act and OAIC guidance: the notifiable data breach assessment and notification timeframes, whether the statutory tort has commenced, the Children’s Online Privacy Code status, the 10 December 2026 date for automated-decision transparency, and any change to the small business exemption.',
+ obl:[
+ ['APPs','Open and transparent information management','Take reasonable steps to implement practices, procedures and systems that ensure compliance with the APPs, and keep a clear, current privacy policy.','GOV'],
+ ['APPs','Collection and notice of personal information','Collect only what is reasonably necessary, by lawful and fair means, and tell individuals at or before collection what is collected, why and who it may be shared with.','PRIV'],
+ ['APPs','Use and disclosure limits','Use or disclose personal information only for the purpose it was collected, or a permitted secondary purpose such as consent or a related and expected use. Apply tighter rules to direct marketing.','PRIV'],
+ ['APPs','Cross-border disclosure','Before disclosing personal information overseas, take reasonable steps to make sure the recipient handles it consistently with the APPs. Track any country “whitelist” mechanism once designated.','TPR'],
+ ['APPs','Security, retention and destruction','Take reasonable steps to protect personal information from misuse, interference, loss and unauthorised access, and destroy or de-identify it when it is no longer needed.','SEC'],
+ ['APPs','Access, correction and data quality','Keep personal information accurate, up to date and complete, and give individuals access to, and correction of, their information on request.','PRIV'],
+ ['Notifiable Data Breaches','Assess and notify eligible data breaches','Assess suspected breaches promptly. Where an eligible data breach is likely to cause serious harm, notify the OAIC and affected individuals as soon as practicable, and keep a breach response plan.','INC'],
+ ['2024 amendments','Statutory tort for serious invasions of privacy','Be aware of the new statutory cause of action for serious privacy invasions, and review surveillance, data handling and incident practices that could expose the organisation to claims.','RISK'],
+ ['2024 amendments','Children’s Online Privacy Code','Online services likely to be accessed by children should prepare for the OAIC-developed Children’s Online Privacy Code, which must be developed within a set period after the 2024 amendments.','PRIV'],
+ ['2024 amendments','Automated decision transparency','From the commencement date in the amendments, privacy policies must describe substantially automated decisions that significantly affect individuals’ rights or interests. Inventory such decisions now.','AI']]},
+
+{id:'au-cps-234',code:'APRA CPS 234',name:'APRA Prudential Standard CPS 234 Information Security',kind:'Regulator direction',region:'Australia',jur:['AU'],sectors:['BFSI','Insurance'],issuer:'Australian Prudential Regulation Authority (APRA)',
+ summary:'Requires APRA-regulated entities (such as banks, insurers and superannuation trustees) to maintain information security capability commensurate with threats to their information assets, including assets managed by related parties and third parties. The board is ultimately responsible for information security.',
+ verify:'Confirm the exact notification triggers and timeframes (72 hours after becoming aware of a material incident; 10 business days for a material control weakness), the definitions of material, and which entity types are covered, against the current standard and APRA guidance (CPG 234).',
+ obl:[
+ ['Responsibilities','Board accountability for information security','The board is ultimately responsible for information security. Clearly assign roles and responsibilities for management, governing bodies and individuals, and ensure they are resourced.','GOV'],
+ ['Capability','Capability commensurate with threats','Maintain an information security capability that is commensurate with the size and extent of threats to information assets, and that enables continued sound operation, including when third parties are used.','SEC'],
+ ['Policy framework','Information security policy framework','Maintain an information security policy framework commensurate with exposures to vulnerabilities and threats, and with responsibilities clearly set out.','GOV'],
+ ['Asset identification','Information asset identification and classification','Classify information assets by criticality and sensitivity, including those managed by related parties and third parties, and apply controls in proportion.','RISK'],
+ ['Third parties','Assurance over third-party and related-party assets','Assess the information security capability of third parties managing your information assets and obtain assurance that their controls are effective, proportionate to the assets’ criticality.','TPR'],
+ ['Controls','Implementation of controls','Implement controls to protect information assets across their lifecycle and to detect and respond to security incidents, commensurate with vulnerabilities and threats.','SEC'],
+ ['Testing','Systematic testing of control effectiveness','Test the effectiveness of controls with a systematic programme whose frequency reflects the rate of change in vulnerabilities, with results reviewed and tracked to remediation. Internal audit reviews design and operating effectiveness.','TEST'],
+ ['Incident management','Incident response plans','Maintain plans to manage information security incidents, covering detection, escalation, response and recovery, and review and test those plans at least annually.','INC'],
+ ['Notification','Notify APRA of incidents and control weaknesses','Notify APRA as soon as possible and no later than 72 hours after becoming aware of a material information security incident, and within 10 business days of a material control weakness not expected to be remediated in time.','INC']]},
+
+{id:'au-cps-230',code:'APRA CPS 230',name:'APRA Prudential Standard CPS 230 Operational Risk Management',kind:'Regulator direction',region:'Australia',jur:['AU'],sectors:['BFSI','Insurance'],issuer:'Australian Prudential Regulation Authority (APRA)',
+ summary:'In force from 1 July 2025, CPS 230 replaced the earlier outsourcing and business continuity standards (CPS 231, CPS 232, SPS 231, SPS 232 and HPS 231). It sets requirements for operational risk management, business continuity and management of service providers for APRA-regulated entities. Existing service provider contracts had a transition period to the earlier of 1 July 2026 or their next renewal.',
+ verify:'Confirm the incident-notification timeframe to APRA, the definition and register requirements for material service providers, and the transition end dates against the standard; APRA also issued targeted amendments to CPS 230 and CPG 230 on 30 April 2026, so check the current text.',
+ obl:[
+ ['Governance','Board accountability for operational risk','The board is accountable for oversight of operational risk management and for approving business continuity and tolerance levels for disruption. Senior management owns the operational risk framework.','GOV'],
+ ['Operational risk','Operational risk management framework','Maintain an operational risk profile, controls, and a process to identify, assess and manage operational risks, including internal control testing and remediation of weaknesses.','RISK'],
+ ['Critical operations','Identify critical operations','Identify critical operations whose disruption would materially affect customers, the entity or the financial system, and map their people, processes, technology and information dependencies.','RES'],
+ ['Tolerance levels','Set tolerance levels for disruption','Set board-approved tolerance levels for each critical operation, such as maximum time of disruption and data loss, and be able to operate within those levels in a disruption.','RES'],
+ ['Business continuity','Business continuity plan and testing','Maintain a credible business continuity plan for critical operations and test it at least annually, with results reported to the board.','TEST'],
+ ['Service providers','Material service provider management','Assess whether each service provider is material, manage them with a formal policy and agreements that cover risk, performance and exit, and keep an annual register of material service providers for APRA.','TPR'],
+ ['Service providers','Service provider contracts','Ensure agreements with material service providers cover services, rights of access and audit, termination, subcontracting and notification of incidents, within the transition timetable.','TPR'],
+ ['Incidents','Notify APRA of operational incidents','Notify APRA of operational risk incidents and of changes to material arrangements or disruptions to critical operations within the prescribed timeframes, and complete post-incident review.','INC']]},
+
+{id:'au-apra-governance',code:'APRA CPS 220 / 510 / 511',name:'APRA Prudential Standards CPS 220 Risk Management, CPS 510 Governance and CPS 511 Remuneration',kind:'Regulator direction',region:'Australia',jur:['AU'],sectors:['BFSI','Insurance'],issuer:'Australian Prudential Regulation Authority (APRA)',
+ summary:'Three APRA cross-industry standards for risk management, board governance and remuneration. CPS 220 applies to authorised deposit-taking institutions, general insurers, life insurers and certain groups; CPS 510 sets governance requirements; and CPS 511 moved remuneration requirements into one standard, phased in from 1 January 2023 with public remuneration disclosures required for financial years ending on or after 31 December 2024.',
+ verify:'Confirm entity coverage, any revisions to CPS 220 and CPS 510 (APRA introduced a new cross-industry CPS 001 on defined terms from 1 January 2026), the specific board and committee requirements, and the CPS 511 disclosure timing and phased start dates for your entity size.',
+ obl:[
+ ['CPS 220','Risk management framework and board responsibility','The board is responsible for risk oversight and must ensure an effective risk management framework is in place with clear roles and reporting lines.','RISK'],
+ ['CPS 220','Board-approved risk appetite statement','Maintain a board-approved risk appetite statement and a risk management strategy that describe the type and level of risk the entity is willing to accept.','RISK'],
+ ['CPS 220','Chief Risk Officer and three lines of defence','Appoint a Chief Risk Officer with appropriate independence and maintain clearly separated risk-taking, risk oversight and independent assurance functions.','GOV'],
+ ['CPS 220','Annual risk management declaration to APRA','Provide the board’s declaration to APRA on the adequacy and operation of the risk management framework, and report material risk matters.','DISC'],
+ ['CPS 510','Board structure and governance','Maintain board structure, committees and policies that meet CPS 510 requirements, and demonstrate effective, independent oversight of management.','GOV'],
+ ['CPS 510','Board and committee review','Regularly review board performance, composition and committee effectiveness, and keep records that can be shown to APRA.','GOV'],
+ ['CPS 511','Remuneration framework','Maintain a board-approved remuneration framework that links pay to prudent risk-taking and appropriate conduct, with a board remuneration committee overseeing it.','GOV'],
+ ['CPS 511','Risk and conduct adjustment of variable pay','Adjust variable remuneration for risk outcomes and misconduct, applying deferral and clawback or reduction as the standard requires.','CONDUCT'],
+ ['CPS 511','Public remuneration disclosure','Publish the remuneration disclosures required for financial years ending on or after 31 December 2024 within six months of year end.','DISC']]},
+
+{id:'au-far',code:'FAR (Cth)',name:'Financial Accountability Regime (Financial Accountability Regime Act 2023)',kind:'Law',region:'Australia',jur:['AU'],sectors:['BFSI','Insurance'],issuer:'APRA and ASIC (joint administration), Treasury',
+ summary:'An accountability regime for senior executives and directors of banks, from 15 March 2024, and of insurers and superannuation trustees, from 15 March 2025. It places accountability, key personnel, deferred remuneration and notification obligations on accountable entities and their accountable persons, and is jointly regulated by APRA and ASIC.',
+ verify:'Confirm covered entity types, asset thresholds for enhanced obligations, notification timeframes (for example 30 days for some events), registration steps and deferred remuneration rules against the Act, FAR rules and regulator guidance.',
+ obl:[
+ ['Accountability','Accountability obligations','Accountable entities and accountable persons must act with honesty, integrity, care, skill and diligence, deal openly with regulators, and take reasonable steps to prevent matters that would adversely affect the entity’s prudential standing or reputation.','GOV'],
+ ['Key personnel','Nominate and register accountable persons','Identify accountable persons and register them with the regulator before they take up the role, subject to exceptions for temporary and unforeseen vacancies.','GOV'],
+ ['Accountability map','Accountability statements and maps','Prepare accountability statements for each accountable person and an accountability map showing how responsibilities fit together and who reports to whom.','GOV'],
+ ['Key personnel','Cover all key business areas','Make sure senior executives are allocated responsibility for all key functions across the entity, with no gaps or unclear overlaps.','GOV'],
+ ['Deferred remuneration','Deferred remuneration obligations','Apply required deferral to variable remuneration of accountable persons and be able to reduce it where accountability obligations are breached.','CONDUCT'],
+ ['Notifications','Notify regulators of defined events','Notify the regulator of defined events, such as an accountable person ceasing in the role or being dismissed or suspended for breach, within the required period.','DISC'],
+ ['Notifications','Enhanced notification for larger entities','Entities above the asset threshold must also provide additional notifications about personnel and structure, and keep records the regulators can inspect.','DISC']]},
+
+{id:'au-aml-ctf',code:'AML/CTF Act 2006',name:'Anti-Money Laundering and Counter-Terrorism Financing Act 2006 and 2024 reform',kind:'Law',region:'Australia',jur:['AU'],sectors:['BFSI','Fintech & crypto','Real estate & construction','Insurance'],issuer:'AUSTRAC / Attorney-General’s Department',
+ summary:'Australia’s AML/CTF regime for reporting entities. The 2024 reforms simplify and modernise obligations; AUSTRAC states they start on 31 March 2026 for existing reporting entities and on 1 July 2026 for newly regulated “tranche 2” sectors, namely legal, accounting, real estate, and dealers in high-value goods and trust and company service providers.',
+ verify:'Confirm the commencement date for your entity type, the final AML/CTF Rules (programme, customer due diligence, reporting), the enrolment deadline for tranche 2 entities, and any transitional relief on the AUSTRAC website.',
+ obl:[
+ ['Enrolment','Enrol or register with AUSTRAC','Enrol as a reporting entity, or register in the relevant role, and keep details current. Newly regulated businesses must enrol within the AUSTRAC deadline.','GOV'],
+ ['ML/TF risk assessment','Assess money laundering and terrorism financing risk','Identify and assess your ML/TF risks by customer, product, channel and jurisdiction, and reassess when circumstances change.','FC'],
+ ['AML/CTF programme','Maintain an AML/CTF programme','Maintain a documented programme that identifies, assesses and mitigates ML/TF risk, and is approved and overseen by senior management or the board.','FC'],
+ ['Governance','AML/CTF compliance officer and oversight','Appoint a compliance officer and ensure senior management oversight, with regular reporting on the programme’s effectiveness.','GOV'],
+ ['Customer due diligence','Know your customer and ongoing due diligence','Verify customer identity and beneficial ownership, apply enhanced due diligence to higher-risk customers and monitor relationships on an ongoing basis.','FC'],
+ ['Reporting','Suspicious matter and threshold reports','Report suspicious matters and other prescribed reports to AUSTRAC within the legislated timeframes, and avoid tipping off.','FC'],
+ ['Training','Staff training and screening','Train relevant staff on ML/TF risks and their obligations, and apply employee due diligence for roles that carry ML/TF risk.','FC'],
+ ['Independent review','Independent evaluation of the programme','Arrange periodic independent evaluation of the programme and fix findings in a timely way.','TEST']]},
+
+{id:'au-asic-rg271',code:'ASIC RG 271',name:'ASIC Regulatory Guide 271 Internal Dispute Resolution',kind:'Regulator direction',region:'Australia',jur:['AU'],sectors:['BFSI','Insurance','Fintech & crypto'],issuer:'Australian Securities and Investments Commission (ASIC)',
+ summary:'Sets out ASIC’s minimum standards for internal dispute resolution (IDR) processes for financial firms it regulates. It replaced RG 165, shortened response times, and requires firms to resolve most complaints within 30 calendar days.',
+ verify:'Confirm the maximum IDR response timeframes by complaint type (30 calendar days standard; 45 for superannuation trustee complaints; 21 for credit hardship and default notice complaints; death-benefit timing), the acknowledgement timeframe, and which firms the guide applies to, in RG 271 itself.',
+ obl:[
+ ['Definition','Treat expressions of dissatisfaction as complaints','Record and handle any expression of dissatisfaction with products, services or complaint handling as a complaint, without requiring a formal written complaint.','CONDUCT'],
+ ['Timeframes','Resolve complaints within set timeframes','Provide an IDR response within 30 calendar days for standard complaints, with shorter or longer periods for specific complaint types, and limited exceptions for complexity or third-party delay.','CONDUCT'],
+ ['Acknowledgement','Acknowledge complaints promptly','Acknowledge complaints promptly after receipt, and tell the complainant who is handling it and how they can follow up.','CONDUCT'],
+ ['Response content','Written IDR responses with reasons and EDR rights','Give a written response that explains the outcome and reasons, and informs the person of their right to take the complaint to the external dispute resolution scheme (AFCA).','CONDUCT'],
+ ['Systems','Complaints handling policy and accessible channels','Maintain a documented, accessible complaints policy and channels that are free and easy to find, with staff trained and empowered to resolve complaints.','GOV'],
+ ['Root cause','Analyse complaints data and fix systemic issues','Analyse complaint trends and root causes, escalate systemic issues and remediate them, with board or senior management reporting.','RISK'],
+ ['Data','Records and reporting of complaints data','Keep records of complaints and outcomes and report IDR data to ASIC as required.','DISC']]},
+
+{id:'au-corps-act',code:'Corporations Act 2001 (duties and disclosure)',name:'Corporations Act 2001 (Cth): directors’ duties and continuous disclosure',kind:'Law',region:'Australia',jur:['AU'],sectors:['All'],issuer:'Parliament of Australia / ASIC',
+ summary:'The Corporations Act sets statutory duties for company directors and officers, including care and diligence and good faith, and gives ASX Listing Rule 3.1 on continuous disclosure statutory force for listed entities. ASIC enforces these duties and has brought cases against directors who failed to ensure compliance with disclosure obligations.',
+ verify:'Confirm the current wording of ss 180, 181, 182, 183, 674 and 674A, the Listing Rule 3.1 and 3.1A exceptions, and the penalties and defences available. This summary does not give penalty figures.',
+ obl:[
+ ['s 180','Duty of care and diligence','Directors and officers must exercise their powers and duties with the care and diligence a reasonable person would in their position. Keep informed and make inquiries, including on cyber and compliance risks.','GOV'],
+ ['s 181','Duty of good faith and proper purpose','Act in good faith in the best interests of the corporation and for a proper purpose. Record how conflicts and decisions were considered.','GOV'],
+ ['Use of position and information','Duties on use of position and information','Do not improperly use your position or information gained in the role to gain advantage or cause detriment to the company.','GOV'],
+ ['s 674 / Listing Rule 3.1','Continuous disclosure','A listed entity that becomes aware of information a reasonable person would expect to materially affect its securities’ price or value must tell the ASX immediately, unless an exception applies.','DISC'],
+ ['s 674A','Fault element for civil liability','Damages liability for breach of continuous disclosure is limited to cases where the entity knew, or was reckless or negligent, about the information’s materiality. Document how materiality decisions are made.','DISC'],
+ ['Disclosure controls','Oversight of disclosure compliance','Directors can breach s 180 by failing to ensure the entity has systems to comply with its disclosure obligations. Maintain a disclosure policy, escalation paths and a committee or process for market-sensitive information.','DISC']]},
+
+{id:'au-asx-cgp',code:'ASX CGPR',name:'ASX Corporate Governance Principles and Recommendations (4th edition; 5th edition in draft)',kind:'Framework',region:'Australia',jur:['AU'],sectors:['All'],issuer:'ASX Corporate Governance Council / ASX Limited',
+ summary:'Eight principles and recommendations for ASX-listed entities, applied on an “if not, why not” basis and reported in a corporate governance statement under the Listing Rules. A draft 5th edition was released in July 2026, which keeps the eight principles; the ASX Limited board is expected to decide on the final text by the end of 2026, with effect for financial years starting on or after 1 July 2027.',
+ verify:'Confirm that the 4th edition remains the operative version for your reporting period, the final status and effective date of the 5th edition, and which recommendations changed. The July 2026 draft details come from law-firm commentary and need checking against the ASX Council publication.',
+ obl:[
+ ['Principle: foundations','Lay solid foundations for management and oversight','Set out the respective roles of the board and management, check the backgrounds of directors and executives, and have written agreements with each director and senior executive.','GOV'],
+ ['Principle: board','Structure the board to be effective','Have a board with an appropriate mix of skills, independence and diversity, and a nomination process, with a board skills matrix reported.','GOV'],
+ ['Principle: culture','Instil a culture of acting lawfully, ethically and responsibly','Articulate and embed the entity’s values and a code of conduct, with channels for reporting breaches such as a whistleblower policy.','GOV'],
+ ['Principle: reporting','Safeguard the integrity of corporate reports','Have an independent audit committee, receive CEO and CFO declarations on financial statements, and verify non-audited periodic reports.','DISC'],
+ ['Principle: disclosure','Make timely and balanced disclosure','Have and disclose a continuous disclosure policy that gives effect to Listing Rule 3.1 and ensures the board sees material announcements.','DISC'],
+ ['Principle: security holders','Respect the rights of security holders','Provide information about the entity and its governance on its website, and facilitate security holder participation in meetings.','DISC'],
+ ['Principle: risk','Recognise and manage risk','Have a risk committee or equivalent, a risk management framework reviewed at least annually, and disclose how material environmental, social and other risks are managed.','RISK'],
+ ['Principle: remuneration','Remunerate fairly and responsibly','Have a remuneration committee and a policy that links pay to performance and risk, with clear disclosure of executive and non-executive pay structure.','GOV']]},
+
+{id:'au-soci',code:'SOCI Act 2018',name:'Security of Critical Infrastructure Act 2018 (Cth)',kind:'Law',region:'Australia',jur:['AU'],sectors:['Energy & utilities','Telecom','Transport & logistics','Healthcare','Cloud & SaaS','BFSI','Government & defence'],issuer:'Department of Home Affairs / Australian Signals Directorate (ASD)',
+ summary:'Imposes positive security obligations on responsible entities for critical infrastructure assets across designated sectors, such as energy, communications, financial services, health, transport, water and data storage. Obligations include asset registration, a critical infrastructure risk management programme and cyber incident reporting to ASD, with enhanced duties for systems of national significance.',
+ verify:'The sources used were largely 2022-era commentary. Confirm current sectors and asset definitions, which obligations apply to each asset class, commencement of the risk management programme rules, annual reporting by boards, incident reporting timeframes (12 hours for critical incidents, 72 hours for others) and any 2024 amendments.',
+ obl:[
+ ['Register','Provide ownership and operational information','Give the Register of Critical Infrastructure Assets information about ownership, control and operations of the asset, and update it when details change.','DISC'],
+ ['Risk management program','Adopt and maintain a critical infrastructure risk management programme','Adopt, maintain, review and comply with a programme that identifies and mitigates material risks to the asset, covering cyber, personnel, supply chain and physical hazards.','RISK'],
+ ['Cyber incident reporting','Report critical cyber security incidents within 12 hours','Report cyber incidents that have a significant impact on asset availability to ASD within 12 hours of becoming aware, followed by a written report.','INC'],
+ ['Cyber incident reporting','Report other cyber security incidents within 72 hours','Report cyber incidents with a relevant impact on the asset to ASD within 72 hours of becoming aware.','INC'],
+ ['Governance','Board attestation and senior accountability','Boards or governing bodies should approve the risk management programme and any annual report, with named accountable executives.','GOV'],
+ ['Supply chain','Manage supply chain and third-party risk','Map critical suppliers and dependencies and manage supplier cyber and personnel risks as part of the risk management programme.','SUPPLY'],
+ ['Resilience','Response and recovery planning','Maintain incident response and recovery plans and test them, so the asset can continue to provide essential services.','RES']]},
+
+{id:'au-cyber-security-act',code:'Cyber Security Act 2024',name:'Cyber Security Act 2024 (Cth): ransomware payment reporting',kind:'Law',region:'Australia',jur:['AU'],sectors:['All'],issuer:'Department of Home Affairs / Australian Signals Directorate (ASD)',
+ summary:'Introduces mandatory reporting of ransomware and cyber extortion payments. The reporting obligation began on 30 May 2025 and applies to businesses with annual turnover above A$3 million in the prior financial year, and to critical infrastructure entities under the SOCI Act regardless of turnover. It covers payments made directly or by a third party such as an insurer or incident response provider.',
+ verify:'Confirm the reporting window (72 hours after making the payment or becoming aware of it), the Ransomware Payment Reporting Rules 2025 and threshold, the required report content, the recipient agency, the enforcement posture after the education-first phase (sources differ), and other parts of the Act, such as smart device standards and a Cyber Incident Review Board, which this entry does not cover.',
+ obl:[
+ ['Reporting duty','Report ransomware payments within 72 hours','If your entity makes, or has made on its behalf, a ransomware or cyber extortion payment, submit a report to the Australian Signals Directorate within 72 hours.','INC'],
+ ['Scope','Determine whether you are a reporting business','Check annual turnover against the A$3 million threshold each year. Critical infrastructure entities under the SOCI Act must report regardless of turnover.','GOV'],
+ ['Third-party payments','Cover payments made by insurers or advisers','Make sure contracts with insurers, negotiators and incident response providers set out who files the report, and that you still receive the data you need to report.','TPR'],
+ ['Incident playbook','Add reporting to the ransomware response playbook','Include the payment decision, legal review, sanctions check and reporting step in the ransomware playbook, with decision authority recorded at board or executive level.','INC'],
+ ['Records','Keep records of payments and decisions','Record the facts of any payment, demand and decision for audit and for the report. Align with Privacy Act and SOCI incident reporting to avoid inconsistency.','DISC'],
+ ['Regulator engagement','Track the regulator’s enforcement posture','Monitor Home Affairs and ASD guidance on compliance expectations and enforcement approach, and update procedures when they change.','GOV']]},
+
+{id:'au-essential-eight',code:'ASD Essential Eight / ISM',name:'ASD Essential Eight Maturity Model and Australian Government Information Security Manual (ISM)',kind:'Framework',region:'Australia',jur:['AU'],sectors:['All','Government & defence','IT / Corporate'],issuer:'Australian Signals Directorate (ASD) / Australian Cyber Security Centre',
+ summary:'The Essential Eight is ASD’s baseline of eight mitigation strategies with three maturity levels; the ISM is the broader catalogue of cyber security principles and controls used by government and widely adopted by industry. The Essential Eight maturity model is updated periodically, with a significant update in November 2023 that, among other changes, tightened patching timeframes.',
+ verify:'Confirm the current Essential Eight maturity model version and its level-by-level requirements, which entities are mandated to implement it (for example, through the Protective Security Policy Framework), and the current ISM release and control applicability. Details were not confirmed from ASD pages in this session.',
+ obl:[
+ ['Application control','Application control','Restrict execution to approved applications, drivers and scripts to prevent malware and unapproved software running.','SEC'],
+ ['Patching','Patch applications and operating systems','Patch, update or mitigate vulnerabilities in applications and operating systems on a risk-based timetable. The November 2023 model expects critical vulnerabilities to be addressed within 48 hours.','SEC'],
+ ['Office macros and hardening','Configure Microsoft Office macro settings and user application hardening','Block untrusted macros and harden user applications such as browsers and PDF viewers against web-based content.','SEC'],
+ ['Administrative privileges','Restrict administrative privileges','Limit administrative access to those who need it, separate privileged and standard accounts and validate and review privileges regularly.','SEC'],
+ ['Multi-factor authentication','Multi-factor authentication','Use multi-factor authentication for users of important services, with phishing-resistant methods at higher maturity levels and for privileged users.','SEC'],
+ ['Backups','Regular backups','Back up important data, software and configuration settings, store them securely, and test restoration.','RES'],
+ ['Maturity','Assess and report maturity level','Assess maturity against the target level using the model, record gaps and plan remediation, and report to leadership.','TEST'],
+ ['ISM','Select and apply ISM controls','Use the ISM risk-based approach to select and tailor controls for systems, and record accepted risks and system authorisation decisions.','RISK']]},
+
+{id:'au-cdr',code:'Consumer Data Right',name:'Consumer Data Right (Competition and Consumer Act 2010 and CDR Rules)',kind:'Law',region:'Australia',jur:['AU'],sectors:['BFSI','Energy & utilities','Telecom','Fintech & crypto'],issuer:'ACCC / Treasury / OAIC',
+ summary:'Lets consumers direct data holders, such as banks and energy retailers, to share their data with accredited recipients. It operates under CDR Rules and data standards. Action initiation (write access) legislation passed in 2024 but the Government indicated it would not switch on specific actions until the ecosystem is on a sustainable footing, and non-bank lenders and buy now pay later providers were being designated as data holders with phased compliance from late 2026.',
+ verify:'Confirm the designated sectors and data holder obligations that apply to you, the current CDR Rules (including consent amendments and non-bank lending thresholds and dates), the accreditation requirements, and the privacy safeguards, against the ACCC and Treasury sources.',
+ obl:[
+ ['Data holder','Share consumer data on request','Data holders must disclose required consumer data to accredited persons through secure interfaces, within the standards and service levels set in the Rules.','CONDUCT'],
+ ['Consent','Valid, informed and revocable consent','Accredited recipients must obtain clear consent for each use and let consumers withdraw it easily. The rules allow bundling of consents in one action in defined cases.','PRIV'],
+ ['Accreditation','Accreditation and ongoing conditions','Obtain accreditation to receive CDR data and keep meeting information security, insurance and governance conditions.','GOV'],
+ ['Information security','Information security controls for CDR data','Meet the information security requirements for CDR data, including controls over storage, access and disposal.','SEC'],
+ ['Privacy safeguards','CDR privacy safeguards','Comply with the CDR privacy safeguards, which tighten the Privacy Act protections for CDR data on use, disclosure, quality, correction and deletion.','PRIV'],
+ ['Dashboard and records','Consumer dashboards and records','Provide consumers with dashboards showing consents and data shared, and keep records of consents and requests.','DISC'],
+ ['Reporting','Report to regulators','Provide the reports and notifications the CDR Rules require to the ACCC and OAIC, and notify of CDR data breaches as required.','DISC']]},
+
+{id:'au-modern-slavery',code:'Modern Slavery Act 2018 (Cth)',name:'Modern Slavery Act 2018 (Cth)',kind:'Law',region:'Australia',jur:['AU'],sectors:['All','Retail & e-commerce','Manufacturing / OT','Mining & metals'],issuer:'Department of Home Affairs',
+ summary:'Requires entities that have consolidated revenue of at least A$100 million for the reporting period and are Australian or carry on business in Australia, plus Commonwealth entities at that threshold, to report annually on modern slavery risks in their operations and supply chains. Statements go on a public register. Entities below the threshold may report voluntarily.',
+ verify:'Confirm the current reporting deadline (six months after the end of the reporting period, per commentary), the mandatory reporting criteria, any 2023 review recommendations or amendments adopted, and the Commonwealth Modern Slavery Statements Register requirements.',
+ obl:[
+ ['Reporting entity','Determine whether you are a reporting entity','Test consolidated revenue against the A$100 million threshold each year and decide on voluntary reporting if you fall below it.','GOV'],
+ ['Statement','Prepare an annual modern slavery statement','Prepare a statement covering your structure, operations and supply chains, the risks of modern slavery, actions taken, effectiveness assessment and consultation with owned entities.','DISC'],
+ ['Approval and signing','Board approval and signature','The statement must be approved by the principal governing body and signed by a responsible member of it. Keep the approval record.','GOV'],
+ ['Lodgement','Lodge the statement within the deadline','Lodge the statement on the public register within six months of the end of the reporting period. Joint statements by a corporate group are permitted.','DISC'],
+ ['Supply chain risk','Identify and assess modern slavery risk','Map your supply chain, assess supplier and sector risks and prioritise high-risk suppliers.','SUPPLY'],
+ ['Due diligence','Supplier due diligence and contract terms','Apply questionnaires, audits and contract clauses to suppliers and act on findings, including remediation and exit decisions.','TPR'],
+ ['Effectiveness','Assess effectiveness of actions','Set indicators and review them annually to show whether actions are reducing modern slavery risk.','TEST']]},
+
+{id:'au-my-health-records',code:'My Health Records Act 2012',name:'My Health Records Act 2012 (Cth)',kind:'Law',region:'Australia',jur:['AU'],sectors:['Healthcare'],issuer:'Australian Digital Health Agency (System Operator) / OAIC',
+ summary:'Governs the national My Health Record system. It applies to the System Operator, registered healthcare provider organisations, repository operators, portal operators and contracted service providers, and sets mandatory data breach notification rules for the system.',
+ verify:'Confirm registration conditions and security policy requirements for healthcare provider organisations, the notification timing to the System Operator and OAIC, and the interaction with the Privacy Act Notifiable Data Breaches scheme, using the Act and OAIC and Digital Health Agency guidance.',
+ obl:[
+ ['Participation','Registered participant obligations','Registered healthcare provider organisations, repository, portal and contracted service providers must meet the Act’s conditions for access to and use of My Health Record information.','GOV'],
+ ['Access and use','Access and use only as authorised','Collect, use and disclose health information in the system only for purposes the Act authorises, and prevent unauthorised access.','PRIV'],
+ ['Security','Security and access controls','Maintain security measures, user access controls and an information security policy for systems connected to the My Health Record system.','SEC'],
+ ['Data breach','Notify the System Operator of actual or potential breaches','Tell the Australian Digital Health Agency promptly of any potential or actual My Health Record data breach, even if resolved.','INC'],
+ ['Data breach','Notify the OAIC (non-government entities)','Non-government reporting entities must also notify the OAIC. State and territory bodies report only to the System Operator.','INC'],
+ ['Data breach','Ask the Agency to notify affected people','Under s 75(6)(d), ask the System Operator to notify affected healthcare recipients, and the public if a significant number are affected.','INC'],
+ ['Response','Contain, investigate and remediate breaches','Contain the breach, investigate cause and impact, remediate (for example by removing malware) and record lessons learned.','INC']]},
+
+{id:'au-whs',code:'WHS Act (model law)',name:'Work Health and Safety Act 2011 (Cth) and model WHS laws',kind:'Law',region:'Australia',jur:['AU'],sectors:['All','Manufacturing / OT','Mining & metals','Real estate & construction','Transport & logistics','Energy & utilities'],issuer:'Safe Work Australia (model law) / state, territory and Commonwealth regulators',
+ summary:'The model WHS laws place a primary duty on a person conducting a business or undertaking (PCBU) to ensure, so far as reasonably practicable, the health and safety of workers and others affected by the work. Officers must exercise due diligence. Most jurisdictions adopted the model law, but not every state; each jurisdiction has its own Act and regulator.',
+ verify:'Confirm which law applies in each state or territory (for example Victoria has its own OHS law and Western Australia has a separate WHS Act), the notifiable incident definitions and timing, and the penalties. This entry cites section 27 only where a source gave it.',
+ obl:[
+ ['Primary duty','PCBU duty of care for workers','Ensure so far as reasonably practicable the health and safety of workers engaged or influenced by the business, including a safe work environment, plant, structures and systems of work.','SAFETY'],
+ ['Other persons','Duty to others affected by the work','Ensure other persons, such as customers, visitors, delivery persons and the public, are not put at risk by the work.','SAFETY'],
+ ['Risk management','Identify hazards and manage risks','Identify hazards, assess risks, eliminate them or minimise them so far as reasonably practicable, and review controls when circumstances change.','RISK'],
+ ['s 27','Officers’ due diligence','Officers must exercise due diligence, including keeping up to date with WHS matters and ensuring processes exist to receive and act on information about incidents, hazards and risks.','GOV'],
+ ['Consultation','Consult, cooperate and coordinate with workers and other duty holders','Consult workers on safety matters and coordinate with other PCBUs that share duties on a site or in a supply chain.','SAFETY'],
+ ['Incidents','Notify the regulator of notifiable incidents','Notify the regulator of deaths, serious injuries or illnesses and dangerous incidents, and preserve the site as required.','INC'],
+ ['Contractors','Manage contractors and shared workplaces','Assess contractors’ capability and set expectations, monitor performance and manage shared-site risks.','SUPPLY']]},
+
+// ---------------------------------------------------------------- NEW ZEALAND
+{id:'nz-privacy-act',code:'Privacy Act 2020 (NZ)',name:'Privacy Act 2020 (New Zealand) and Privacy Amendment Act 2025',kind:'Law',region:'New Zealand',jur:['NZ'],sectors:['All','Privacy (cross-industry)'],issuer:'Parliament of New Zealand / Office of the Privacy Commissioner',
+ summary:'New Zealand’s privacy law, applying to agencies (public and private organisations and individuals) and built around information privacy principles (IPPs) with a notifiable privacy breach scheme. The Privacy Amendment Act 2025 added IPP 3A on indirect collection, which took effect on 1 May 2026 and is not retrospective.',
+ verify:'Confirm the notifiable privacy breach test (serious harm) and the notification timeframe to the Commissioner and individuals, which were not confirmed in this research, plus the full IPP wording, IPP 3A exceptions and the Commissioner’s guidance.',
+ obl:[
+ ['IPPs','Collect only necessary information, lawfully and fairly','Collect personal information only for a lawful purpose connected with your function, and only what is necessary, preferably directly from the individual.','PRIV'],
+ ['IPP 3','Tell people what you collect','When collecting directly, take reasonable steps to make the individual aware of the purpose, recipients, their rights and the consequences of not providing the information.','PRIV'],
+ ['IPP 3A','Notify people about indirect collection','From 1 May 2026, when collecting personal information from someone other than the individual, take steps like those for direct collection to make them aware, unless an exception applies.','PRIV'],
+ ['IPPs','Storage and security safeguards','Protect personal information against loss, misuse and unauthorised access with reasonable security safeguards.','SEC'],
+ ['IPPs','Access, correction and accuracy','Give people access to and correction of their information, and check accuracy before using it.','PRIV'],
+ ['IPPs','Retention, use and disclosure limits','Keep information no longer than needed and use or disclose it only for purposes allowed by the principles.','PRIV'],
+ ['IPPs','Disclosure outside New Zealand','Before sending personal information overseas, make sure the recipient is subject to comparable safeguards or the individual authorises it.','TPR'],
+ ['Notifiable privacy breaches','Notify serious privacy breaches','Notify the Privacy Commissioner and affected individuals as soon as practicable after becoming aware of a privacy breach likely to cause serious harm.','INC'],
+ ['Governance','Appoint a privacy officer','Have at least one privacy officer to encourage compliance, handle requests and work with the Commissioner.','GOV']]},
+
+{id:'nz-rbnz-outsourcing',code:'RBNZ BS11',name:'Reserve Bank of New Zealand Outsourcing Policy (BS11) for registered banks',kind:'Regulator direction',region:'New Zealand',jur:['NZ'],sectors:['BFSI'],issuer:'Reserve Bank of New Zealand (RBNZ)',
+ summary:'RBNZ’s outsourcing policy for locally incorporated registered banks, published in the Banking Supervision Handbook and revised in 2017. It aims to ensure banks can continue to operate and be resolved, including under Open Bank Resolution, if a service provider fails. ANZ NZ described moving to the revised policy as a very large programme of work.',
+ verify:'Confirm the current version of BS11, which banks are covered, the status of any review or replacement by newer deposit-taker standards, the exact requirements for separation plans, contract terms and backup, and any transition dates. No 2025 to 2026 RBNZ material was found in this research, and other RBNZ prudential requirements for banks are not covered here.',
+ obl:[
+ ['Purpose','Maintain ability to operate and resolve','Ensure outsourcing arrangements do not compromise the bank’s ability to continue operating or to be managed through stress, including under Open Bank Resolution.','RES'],
+ ['Governance','Board-approved outsourcing policy','Maintain a board-approved outsourcing policy and apply it consistently, since RBNZ found the earlier policy was applied inconsistently.','GOV'],
+ ['Materiality','Identify the functions in scope','Assess which functions are covered by the policy and keep an inventory of outsourced arrangements and their providers.','TPR'],
+ ['Contracts','Required contractual provisions','Ensure contracts with providers contain the provisions the policy requires to support continuity and resolution.','TPR'],
+ ['Backup','Robust backup arrangements','Keep backup arrangements so that critical services can continue if the provider fails or the arrangement ends.','RES'],
+ ['Separation','Separation plans for foreign-owned banks','Foreign-owned banks should maintain plans for separating their New Zealand operations from group providers, as the policy requires.','RES'],
+ ['Assurance','Monitor providers and test arrangements','Monitor provider performance, test continuity and separation arrangements, and report to the board and to RBNZ as required.','TEST']]},
+
+{id:'nz-cofi',code:'CoFI regime',name:'Financial Markets (Conduct of Institutions) Amendment Act 2022 (CoFI regime)',kind:'Law',region:'New Zealand',jur:['NZ'],sectors:['BFSI','Insurance'],issuer:'Financial Markets Authority (FMA)',
+ summary:'The Conduct of Financial Institutions regime requires registered banks, licensed insurers and licensed non-bank deposit takers that provide relevant services to retail customers to hold an FMA licence and treat customers fairly. It came fully into effect on 31 March 2025. Intermediaries such as brokers and advisers are also affected.',
+ verify:'Confirm the licence conditions, the fair conduct principle wording, the incentives rules (including what is restricted), the intermediary rules and the FMA’s expectations, using the Act, regulations and FMA guidance.',
+ obl:[
+ ['Licensing','Hold an FMA CoFI licence','Obtain and maintain an FMA licence to provide relevant services to retail customers, and meet its conditions.','CONDUCT'],
+ ['Fair conduct principle','Treat consumers fairly','Treat consumers fairly, including their interests, in the design and delivery of products and services.','CONDUCT'],
+ ['Fair conduct programme','Maintain a fair conduct programme','Maintain a written fair conduct programme that sets out how you give effect to the fair conduct principle, and keep it up to date.','CONDUCT'],
+ ['Fair conduct programme','Publish a summary of the programme','Publish a summary of the fair conduct programme on your website.','DISC'],
+ ['Incentives','Restrict volume-based sales incentives','Comply with the rules restricting certain volume- or value-based incentives for staff and intermediaries.','CONDUCT'],
+ ['Intermediaries','Oversee intermediaries','Take responsibility for how your distribution channels and intermediaries treat consumers, as the regime requires.','TPR'],
+ ['Monitoring','Monitor, review and report on conduct','Monitor outcomes and complaints, review the programme and learn from FMA review findings, including its fair conduct programme insights report.','TEST']]},
+
+{id:'nz-fmca',code:'FMC Act 2013',name:'Financial Markets Conduct Act 2013 (New Zealand)',kind:'Law',region:'New Zealand',jur:['NZ'],sectors:['BFSI','Insurance','Fintech & crypto'],issuer:'Financial Markets Authority (FMA) / Ministry of Business, Innovation and Employment',
+ summary:'The primary law for offering and dealing in financial products and providing financial services in New Zealand, including fair dealing, disclosure, continuous disclosure for listed issuers and licensing of financial advice providers. Retail financial advice must be given by licensed financial advice providers.',
+ verify:'This summary was built from secondary sources. Confirm the Part and section references, the licensing and exclusion rules, the continuous disclosure and NZX Listing Rule requirements and any penalties against the Act, regulations, the NZX rulebook and FMA guidance.',
+ obl:[
+ ['Fair dealing','Do not mislead or deceive in financial dealings','Do not make false, misleading or unsubstantiated statements, or engage in misleading conduct, in relation to financial products or services.','CONDUCT'],
+ ['Disclosure','Provide required offer disclosure','Provide the disclosure documents the Act requires for offers of financial products, unless an exclusion or exemption applies.','DISC'],
+ ['Continuous disclosure','Continuous disclosure by listed issuers','Listed issuers must disclose material information promptly. Maintain a disclosure policy, escalation and controls.','DISC'],
+ ['Licensing','Licensing of financial advice providers','Provide regulated financial advice to retail clients only if registered and licensed as a financial advice provider, and meet licence conditions.','CONDUCT'],
+ ['Market conduct','Substantial holdings and directors’ dealings','Comply with substantial holder notification and director and officer dealing rules for listed issuers.','DISC'],
+ ['Governance','Governance of financial product issuers','Issuers and managers must meet governance, supervision and reporting duties that apply to their product type, such as managed investment schemes.','GOV']]},
+
+{id:'nz-aml-cft',code:'AML/CFT Act 2009 (NZ)',name:'Anti-Money Laundering and Countering Financing of Terrorism Act 2009 (New Zealand)',kind:'Law',region:'New Zealand',jur:['NZ'],sectors:['BFSI','Fintech & crypto','Real estate & construction','Insurance'],issuer:'Department of Internal Affairs / Financial Intelligence Unit (NZ Police) / Ministry of Justice',
+ summary:'New Zealand’s AML/CFT regime for financial institutions, casinos and designated non-financial businesses. The Statutes Amendment Act 2025 came into force on 27 November 2025 and lengthened the deadline for prescribed transaction reports to 20 working days from 10 and removed the requirement to verify address under standard customer due diligence. Further amendment bills were pending as of December 2025, and the Department of Internal Affairs became the sole supervisor from 1 July 2026.',
+ verify:'Confirm the status and content of the AML/CFT Amendment Bill and the Supervisor, Levy and Other Matters Bill, the supervisor change, current guidance, and the suspicious activity reporting and customer due diligence requirements, which were not confirmed in detail in this research.',
+ obl:[
+ ['Risk assessment','Assess ML/FT risk','Write and keep current an assessment of money laundering and financing of terrorism risk covering customers, products, delivery channels, countries and institutions.','FC'],
+ ['AML/CFT programme','Maintain an AML/CFT programme','Maintain a written programme that implements procedures to detect, manage and mitigate risk, reviewed and audited periodically.','FC'],
+ ['Compliance officer','Appoint an AML/CFT compliance officer','Appoint a compliance officer to administer and maintain the programme, with senior management oversight.','GOV'],
+ ['Customer due diligence','Customer due diligence','Identify and verify customers and beneficial owners, apply enhanced due diligence on higher-risk customers and monitor accounts and transactions. Address verification is no longer required for standard CDD after 27 November 2025.','FC'],
+ ['Prescribed transaction reports','File prescribed transaction reports','File prescribed transaction reports with the Financial Intelligence Unit within 20 working days.','FC'],
+ ['Suspicious activity','Report suspicious activity','Report suspicious activity to the Financial Intelligence Unit within the required time, and avoid tipping off.','FC'],
+ ['Records','Keep records','Keep transaction, identity, risk assessment and programme records for the periods the Act requires.','DISC'],
+ ['Supervision','Engage with the supervisor and annual reporting','Submit annual reports and respond to supervisor requests; track the change to a single supervisor and updated guidance.','GOV']]},
+
+{id:'nz-nzism',code:'NZISM',name:'New Zealand Information Security Manual (NZISM)',kind:'Standard',region:'New Zealand',jur:['NZ'],sectors:['Government & defence','IT / Corporate','Cloud & SaaS'],issuer:'Government Communications Security Bureau (GCSB) / Government Chief Information Security Officer',
+ summary:'The New Zealand government’s manual of information assurance and security controls, published by the GCSB’s National Cyber Security Centre; version 3.9 is dated November 2025. It is mandatory for government departments and agencies through Cabinet direction and the Protective Security Requirements, though not required by statute, and is encouraged for other organisations and suppliers to government.',
+ verify:'Confirm the current NZISM version, the applicability to your entity, the specific controls and their compliance levels, and any updated Cabinet direction. The legal status description comes from the GCSB document and should be checked there.',
+ obl:[
+ ['Mandatory controls','Implement “must” and “must not” controls','Departments and agencies must implement baseline requirements written as must or must not.','SEC'],
+ ['Good practice controls','Document deviation from “should” controls','Where good-practice controls (should) are not implemented, document the reasons and residual risk, which must be acknowledged by the Accreditation Authority.','RISK'],
+ ['Accreditation','System accreditation','Systems handling government information go through certification and accreditation, with a named Accreditation Authority accepting residual risk.','GOV'],
+ ['Protective Security Requirements','Align with the Protective Security Requirements','Use the NZISM as part of the PSR framework for information, personnel and physical security.','GOV'],
+ ['Suppliers','Flow requirements to vendors and contractors','Vendors and contractors serving government agencies should apply the NZISM controls relevant to the services they deliver.','TPR'],
+ ['Change management','Track manual updates','Monitor NZISM version updates and re-assess control compliance when requirements change.','TEST']]},
+
+{id:'nz-hipc',code:'HIPC 2020',name:'Health Information Privacy Code 2020 (New Zealand)',kind:'Regulator direction',region:'New Zealand',jur:['NZ'],sectors:['Healthcare','Pharma & life sciences'],issuer:'Office of the Privacy Commissioner (NZ)',
+ summary:'A code of practice under the Privacy Act 2020 that replaces the information privacy principles with 13 rules for health agencies, such as general practices, hospitals and health insurers. Amendment No 2 added Rule 3A on indirect collection of health information, effective 1 May 2026.',
+ verify:'Confirm the final text of Amendment No 2 (sources were consultation drafts), which agencies the Code covers, the full wording of all 13 rules and the Commissioner’s guidance on Rule 3A.',
+ obl:[
+ ['Rule 1-2','Collect health information only for a lawful purpose, from the individual','Collect only what is necessary for a lawful purpose connected with the agency’s function and generally collect it directly from the patient.','PRIV'],
+ ['Rule 3','Tell patients about collection','Take reasonable steps so that patients know why health information is collected, who will receive it and their rights.','PRIV'],
+ ['Rule 3A','Make patients aware of indirect collection','From 1 May 2026, take reasonable steps to make sure patients are aware when health information is collected indirectly, from someone other than the patient or representative.','PRIV'],
+ ['Security','Security safeguards for health information','Protect health information against loss, misuse and unauthorised access, with controls proportionate to its sensitivity.','SEC'],
+ ['Access and correction','Access to and correction of health information','Give patients access to their health information and consider correction requests.','PRIV'],
+ ['Use and disclosure','Use and disclose only as the Code permits','Use and disclose health information only for the purposes the rules permit, such as health care, or as authorised by the patient.','PRIV'],
+ ['Breach','Notify privacy breaches under the Privacy Act','Health agencies are also subject to the Privacy Act 2020 notifiable privacy breach scheme. Keep breach response procedures ready.','INC']]},
+
+{id:'nz-hswa',code:'HSWA 2015 (NZ)',name:'Health and Safety at Work Act 2015 (New Zealand) and Health and Safety at Work Amendment Act 2026',kind:'Law',region:'New Zealand',jur:['NZ'],sectors:['All','Manufacturing / OT','Mining & metals','Real estate & construction','Transport & logistics','Energy & utilities'],issuer:'WorkSafe New Zealand / Ministry of Business, Innovation and Employment',
+ summary:'New Zealand’s primary health and safety law, placing duties on persons conducting a business or undertaking (PCBUs) and their officers. An amendment bill focused on critical risks passed on 1 July 2026, with changes due to take effect on 1 April 2027, and WorkSafe is preparing guidance.',
+ verify:'Confirm the content and commencement of the amendment (including any change to officers’ due diligence, critical risk definitions and notifiable event rules) on legislation.govt.nz and WorkSafe, as these were only partly confirmed.',
+ obl:[
+ ['Primary duty','PCBU primary duty of care','A PCBU must ensure, so far as reasonably practicable, the health and safety of workers and others affected by its work.','SAFETY'],
+ ['Officers','Officers’ due diligence','Officers must exercise due diligence to ensure the PCBU complies with its duties. Keep records of how governance bodies oversee safety.','GOV'],
+ ['Risk management','Identify and manage risks','Identify hazards, assess risks and apply controls in the hierarchy of controls.','RISK'],
+ ['Critical risks','Prepare for the critical risk amendments','From 1 April 2027 the amended Act focuses on critical risks (those likely to cause death, serious injury or notifiable events). Map these and plan controls ahead.','SAFETY'],
+ ['Worker engagement','Engage and consult workers','Engage with workers on health and safety matters and provide for participation.','SAFETY'],
+ ['Notifiable events','Notify WorkSafe of notifiable events','Notify WorkSafe of notifiable events, such as deaths, serious injuries or illnesses and incidents, and preserve the scene as required.','INC'],
+ ['Contractors','Overlapping duties with other PCBUs','Consult, cooperate and coordinate with other PCBUs and contractors that share work or sites.','SUPPLY']]},
+
+{id:'nz-fta',code:'Fair Trading Act 1986 (NZ)',name:'Fair Trading Act 1986 (New Zealand)',kind:'Law',region:'New Zealand',jur:['NZ'],sectors:['All','Retail & e-commerce'],issuer:'Commerce Commission / Ministry of Business, Innovation and Employment',
+ summary:'Consumer protection law prohibiting misleading and deceptive conduct and other unfair practices in trade, and regulating unfair contract terms in standard-form consumer contracts. In October 2025 Cabinet agreed to move most criminal liability to a civil penalty regime, with legislation expected later; its passage was not confirmed.',
+ verify:'Confirm whether the penalties reform bill has passed and what the maximum civil penalties are, plus current provisions on unfair contract terms, unsubstantiated representations and the Commerce Commission’s priorities, against legislation.govt.nz. No penalty amounts are given here.',
+ obl:[
+ ['Misleading conduct','No misleading or deceptive conduct in trade','Do not engage in conduct that misleads or deceives, or is likely to, in trade, including in advertising and online.','CONDUCT'],
+ ['Representations','Substantiate claims','Have reasonable grounds for claims about products, prices, origin and sustainability, and keep evidence.','CONDUCT'],
+ ['Unfair contract terms','Review standard-form consumer contracts for unfair terms','Review standard-form contract terms for unfair terms, since a stronger party cannot impose terms that cause significant imbalance.','CONDUCT'],
+ ['Pricing','Pricing and promotions clarity','Present prices and promotions clearly and accurately, including conditions.','CONDUCT'],
+ ['Governance','Compliance programme and training','Train sales and marketing staff, review advertising and escalate complaints and Commission contact.','GOV'],
+ ['Reform','Track the penalties regime reform','Watch the progress of the planned shift from criminal to civil penalties and update compliance risk assessments.','RISK']]},
+
+{id:'nz-companies-act',code:'Companies Act 1993 (NZ)',name:'Companies Act 1993 (New Zealand): directors’ duties',kind:'Law',region:'New Zealand',jur:['NZ'],sectors:['All'],issuer:'Parliament of New Zealand / Registrar of Companies',
+ summary:'Sets the statutory duties of directors of New Zealand companies, including good faith, reckless trading, incurring obligations, care, diligence and skill, and reliance on information. The Companies Amendment Act 2014 added criminal offences for serious breaches of the good faith duty and for reckless or insolvent trading.',
+ verify:'Confirm the current wording of ss 131 to 138A and s 380, the standard of care and the reliance conditions, and any penalties or recent amendments against legislation.govt.nz.',
+ obl:[
+ ['s 131','Act in good faith and in the best interests of the company','Directors must act in good faith and in what they believe is in the company’s best interests. Record how conflicts and decisions were considered.','GOV'],
+ ['s 135','Reckless trading','Do not agree to or allow the business to be carried on in a manner likely to create a substantial risk of serious loss to creditors. Monitor solvency and risk.','RISK'],
+ ['s 136','Duty in relation to obligations','Do not agree to the company incurring an obligation unless you believe on reasonable grounds it will be able to perform it when due.','RISK'],
+ ['s 137','Duty of care, diligence and skill','Exercise the care, diligence and skill of a reasonable director in the circumstances, including the company’s nature and your role.','GOV'],
+ ['s 138','Reliance on reports and advice','Directors may rely on reports and advice only if they act in good faith, make proper inquiry where circumstances call for it and have no reason to doubt reliability.','GOV'],
+ ['s 138A','Serious breach of good faith','Be aware that a knowing or bad-faith breach of the good faith duty can be a criminal offence. Keep strong governance records.','GOV']]}
+);
+
+L.packs=L.packs||[];
+L.packs.push(
+ ['Australia · Banking and insurance','APRA-regulated banks and insurers: prudential standards, accountability, AML/CTF, complaints, privacy, cyber and data sharing.',['au-cps-230','au-cps-234','au-apra-governance','au-far','au-aml-ctf','au-asic-rg271','au-privacy-act','au-cyber-security-act','au-cdr','au-essential-eight','iso27001']],
+ ['Australia · Privacy and cyber (all sectors)','Privacy and cyber obligations for any Australian organisation: Privacy Act and breach notification, ransomware reporting and Essential Eight.',['au-privacy-act','au-cyber-security-act','au-essential-eight','au-soci','iso27001','nist-csf2','gdpr']],
+ ['Australia · Healthcare','Health sector privacy, My Health Record, work health and safety and cyber baselines.',['au-my-health-records','au-privacy-act','au-whs','au-essential-eight','iso27799','iso27001']],
+ ['New Zealand · Financial services','Banks, insurers and advisers: CoFI conduct, financial markets law, AML/CFT, outsourcing, privacy and director duties.',['nz-cofi','nz-fmca','nz-aml-cft','nz-rbnz-outsourcing','nz-privacy-act','nz-companies-act','iso27001']],
+ ['New Zealand · Health, public sector and workplace','Privacy, health information, government security manual and health and safety for NZ organisations.',['nz-privacy-act','nz-hipc','nz-nzism','nz-hswa','nz-fta','iso27001']],
+ ['ANZ · Critical infrastructure','Critical infrastructure and operators in Australia and New Zealand: SOCI, ransomware reporting, cyber baselines and OT security.',['au-soci','au-cyber-security-act','au-essential-eight','au-whs','nz-nzism','nz-hswa','iec62443','nist-csf2','iso27001']]
+);
+})();

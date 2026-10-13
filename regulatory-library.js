@@ -26,7 +26,7 @@ window.GRC_LIB={
   ['Art. 37–39','Data Protection Officer','Appoint a DPO where required; ensure independence, resources and direct reporting to top management.','GOV'],
   ['Art. 44–49','International transfers','Transfer personal data outside the EEA only with an adequacy decision, SCCs/BCRs or another valid safeguard and a transfer assessment.','PRIV']]},
  {id:'dpdp',code:'DPDP Act 2023',name:'India Digital Personal Data Protection Act, 2023 (and DPDP Rules, 2025)',kind:'Law',region:'India',sectors:['All','BFSI'],issuer:'Government of India / Data Protection Board of India',
-  summary:'India’s data protection law for digital personal data. Penalties up to ₹250 crore per instance. Rules were notified in 2025 and obligations are being phased in.',verify:'Confirm phase-in dates and the final Rules text; some obligations (e.g. consent managers, most duties) commence later than the Board.',
+  summary:'India’s data protection law for digital personal data. Penalties are tiered, up to ₹250 crore (for failing to keep reasonable security safeguards) and lower tiers for other breaches. The Rules were notified in November 2025 and duties phase in, with most applying about 18 months after notification.',verify:'Confirm phase-in dates and the final Rules text; some obligations (e.g. consent managers, most duties) commence later than the Board.',
   obl:[
   ['s.4–7','Lawful grounds: consent or legitimate use','Process personal data only with valid consent or a listed legitimate use; consent must be free, specific, informed, unconditional and unambiguous, with clear affirmative action.','PRIV'],
   ['s.5','Notice to data principals','Give an itemised notice (data, purpose, how to exercise rights and complain to the Board) in plain language, with an option of English or an Eighth Schedule language.','PRIV'],
@@ -90,8 +90,8 @@ window.GRC_LIB={
   ['Reporting','Incident reporting','Report unusual cyber incidents to RBI and CERT-In within the required time frames and provide root-cause analysis.','INC'],
   ['Testing','Vulnerability assessment and penetration testing','Run periodic VA/PT and red-team style exercises, and remediate findings by risk.','TEST'],
   ['Payments','Digital payment security controls','Apply the digital payment security control requirements for internet, mobile and card channels.','SEC']]},
- {id:'rbi-kyc',code:'RBI KYC MD',name:'RBI Master Direction – Know Your Customer (2016, as amended)',kind:'Regulator direction',region:'India',sectors:['BFSI'],issuer:'Reserve Bank of India',
-  summary:'Customer due diligence and AML/CFT obligations for regulated entities, aligned to the Prevention of Money-laundering Act.',verify:'Re-confirm periodic-updation intervals and any recent amendments.',
+ {id:'rbi-kyc',code:'RBI KYC MD',name:'RBI Know Your Customer Directions (the 2016 Master Direction has been superseded by 2025 Directions issued per entity type)',kind:'Regulator direction',region:'India',sectors:['BFSI'],issuer:'Reserve Bank of India',
+  summary:'Customer due diligence and AML/CFT obligations for regulated entities, aligned to the Prevention of Money-laundering Act.',verify:'RBI issued new KYC Directions in November 2025 (one set per regulated-entity category) replacing the 2016 Master Direction. Confirm which Directions apply to your entity type, the periodic-updation intervals and the June 2025 relaxation for low-risk individuals.',
   obl:[
   ['Policy','Board-approved KYC / AML policy','Maintain a KYC policy with customer acceptance, identification, monitoring and risk management elements; appoint a Designated Director and Principal Officer.','GOV'],
   ['CDD','Customer due diligence','Identify and verify customers, and beneficial owners of legal entities, using officially valid documents or e-KYC.','FC'],

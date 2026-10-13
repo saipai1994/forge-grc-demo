@@ -6,7 +6,7 @@ const S=()=>G.S(),O=()=>G.org();
 const isAdmin=()=>G.me().role==='Administrator';
 
 // ---------------------------------------------------------------- currency and number format
-const CURS={INR:['₹','en-IN'],USD:['$','en-US'],EUR:['€','en-IE'],GBP:['£','en-GB'],AED:['AED ','en-AE'],SGD:['S$','en-SG'],AUD:['A$','en-AU'],CAD:['C$','en-CA'],CHF:['CHF ','de-CH'],ZAR:['R','en-ZA'],JPY:['¥','ja-JP']};
+const CURS={INR:['₹','en-IN'],USD:['$','en-US'],EUR:['€','en-IE'],GBP:['£','en-GB'],AED:['AED ','en-AE'],SGD:['S$','en-SG'],AUD:['A$','en-AU'],CAD:['C$','en-CA'],CHF:['CHF ','de-CH'],ZAR:['R','en-ZA'],JPY:['¥','ja-JP'],NZD:['NZ$','en-NZ'],PHP:['₱','en-PH'],SAR:['SAR ','en-SA'],QAR:['QAR ','en-QA'],BHD:['BHD ','en-BH'],OMR:['OMR ','en-OM'],KWD:['KWD ','en-KW']};
 G.cur=()=>{const c=(O().profile.currency||'INR').toUpperCase(),d=CURS[c]||CURS.INR;return{code:CURS[c]?c:'INR',sym:d[0],loc:d[1]}};
 const DEFAULT_T={controls:85,attest:80,oblig:90};
 G.target=k=>{const t=S().targets||{};return t[k]!=null?t[k]:DEFAULT_T[k]};
