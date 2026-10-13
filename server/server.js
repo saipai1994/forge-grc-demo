@@ -6,6 +6,10 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
 const {DatabaseSync}=require('node:sqlite');
 const SYNC=require('../sync-core.js');
 const VQ=require('../vq-template.js');
+const MFA=require('./mfa.js');
+const MAIL=require('./mail.js');
+const SCAN=require('./scan.js');
+const OIDC=require('./oidc.js');
 
 const PORT=+process.env.PORT||8080,ROOT=path.join(__dirname,'..'),DATA=process.env.FORGE_DATA||path.join(ROOT,'data');
 const INGEST_KEY=process.env.FORGE_INGEST_KEY||'dev-ingest-key';
@@ -26,6 +30,7 @@ CREATE TABLE IF NOT EXISTS speakup(id TEXT PRIMARY KEY,org TEXT NOT NULL,ref TEX
 CREATE TABLE IF NOT EXISTS vq_tokens(token_hash TEXT PRIMARY KEY,org TEXT NOT NULL,profile TEXT NOT NULL,vq_id TEXT NOT NULL,vendor_id TEXT NOT NULL,expires TEXT NOT NULL,created TEXT NOT NULL,used INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS files(id TEXT PRIMARY KEY,org TEXT NOT NULL,profile TEXT NOT NULL,ref TEXT NOT NULL,name TEXT NOT NULL,size INTEGER,type TEXT,by TEXT,ts TEXT,sha TEXT);`);
 try{db.exec('ALTER TABLE users ADD COLUMN must_change INTEGER DEFAULT 0')}catch{}
+for(const c of ['totp_secret TEXT','totp_enabled INTEGER DEFAULT 0','totp_last INTEGER DEFAULT 0','recovery TEXT'])try{db.exec('ALTER TABLE users ADD COLUMN '+c)}catch{}
 
 // ---- secrets and users ----
 const meta=k=>{const r=db.prepare('SELECT v FROM meta WHERE k=?').get(k);return r&&r.v};
@@ -50,7 +55,9 @@ const sign=p=>crypto.createHmac('sha256',SECRET).update(p).digest('base64url');
 const issue=(u)=>{const p=b64({id:u.id,org:u.org,exp:Date.now()+12*3600e3});return p+'.'+sign(p)};
 function verify(tok){if(!tok)return null;const [p,s]=String(tok).split('.');if(!p||!s)return null;const e=sign(p);if(e.length!==s.length||!crypto.timingSafeEqual(Buffer.from(e),Buffer.from(s)))return null;
  let o;try{o=JSON.parse(Buffer.from(p,'base64url').toString())}catch{return null}if(!o||o.exp<Date.now())return null;
- const u=db.prepare('SELECT id,org,email,name,role,must_change FROM users WHERE id=? AND active=1').get(o.id);return u||null}
+ const u=db.prepare('SELECT id,org,email,name,role,must_change,totp_enabled FROM users WHERE id=? AND active=1').get(o.id);if(!u||o.purpose)return null;u.must_mfa=process.env.FORGE_REQUIRE_MFA==='1'&&!u.totp_enabled;return u}
+const mfaTicket=u=>{const p=b64({id:u.id,purpose:'mfa',exp:Date.now()+5*60e3});return p+'.'+sign(p)};
+function readTicket(t){const [p,sg]=String(t||'').split('.');if(!p||!sg)return null;const e=sign(p);if(e.length!==sg.length||!crypto.timingSafeEqual(Buffer.from(e),Buffer.from(sg)))return null;try{const o=JSON.parse(Buffer.from(p,'base64url').toString());return o&&o.purpose==='mfa'&&o.exp>Date.now()?o:null}catch{return null}}
 const authUser=(req,url)=>verify((req.headers.authorization||'').replace(/^Bearer /,'')||url.searchParams.get('token'));
 
 // ---- permissions: what each role may change (enforced here, never in the browser) ----
@@ -82,6 +89,7 @@ function note(org,profile,n){
  const u=n.who&&db.prepare('SELECT email FROM users WHERE org=? AND name=? AND active=1').get(org,n.who);
  const setSt=v=>db.prepare('UPDATE notes SET email_status=? WHERE id=?').run(v,id);
  if(!n.who)setSt('not sent (everyone)');else if(!u)setSt('no address on file');
+ else if(MAIL.configured()){MAIL.send({to:u.email,subject:n.title,text:`${n.title}\n\n${n.body||''}\n\nOpen Forge GRC to take action.`}).then(()=>setSt('sent')).catch(e=>{console.error('mail failed:',e.message);setSt('failed')})}
  else if(process.env.FORGE_MAIL_WEBHOOK){postJson(process.env.FORGE_MAIL_WEBHOOK,{to:u.email,subject:n.title,text:n.body||n.title}).then(ok=>setSt(ok?'sent':'failed')).catch(()=>setSt('failed'))}
  else setSt('queued (no mail relay configured)');
  return rec}
@@ -180,8 +188,10 @@ const FILES_DIR=path.join(DATA,'files');
 
 async function api(req,res,url){
  const p=url.pathname;
- if(p==='/api/health')return send(res,200,{ok:true,name:'Forge GRC',version:1,assistant:!!process.env.ANTHROPIC_API_KEY,today:today(),fixedDate:!!process.env.FORGE_TODAY,hint:process.env.FORGE_SHOW_DEMO_LOGINS!=='0'?`Demo accounts: morgan@forge.demo (administrator), jordan@, priya@, evan@, sam@, audrey@ (auditor) · password ${DEMO_PW}`:''});
+ if(p==='/api/health')return send(res,200,{ok:true,name:'Forge GRC',version:1,assistant:!!process.env.ANTHROPIC_API_KEY,scanning:SCAN.configured(),oidc:OIDC.configured(),localLogin:process.env.FORGE_LOCAL_LOGIN!=='0',today:today(),fixedDate:!!process.env.FORGE_TODAY,hint:process.env.FORGE_SHOW_DEMO_LOGINS!=='0'?`Demo accounts: morgan@forge.demo (administrator), jordan@, priya@, evan@, sam@, audrey@ (auditor) · password ${DEMO_PW}`:''});
+ if(p==='/api/oidc/login'||p==='/api/oidc/callback'||p==='/api/oidc/exchange')return oidcRoute(req,res,url,p);
  if(p==='/api/login'&&req.method==='POST'){
+  if(process.env.FORGE_LOCAL_LOGIN==='0')return send(res,403,{error:'Password sign-in is turned off. Use single sign-on.'});
   const ip=req.socket.remoteAddress,a=attempts.get(ip)||{n:0,t:Date.now()};if(Date.now()-a.t>6e5){a.n=0;a.t=Date.now()}if(a.n>=20)return send(res,429,{error:'Too many attempts. Try again in a few minutes.'});
   const b=await readBody(req),em=String(b.email||'').toLowerCase().trim(),lk=lockouts.get(em)||{n:0,t:Date.now()};
   if(Date.now()-lk.t>15*60e3){lk.n=0;lk.t=Date.now()}
@@ -190,9 +200,11 @@ async function api(req,res,url){
   const good=u&&crypto.timingSafeEqual(Buffer.from(hashPw(String(b.password||''),u.salt)),Buffer.from(u.hash));
   if(!good){a.n++;attempts.set(ip,a);lk.n++;lockouts.set(em,lk);if(u)logA(u.org,'-',null,u.name,u.role,'session',null,'failed sign-in',null);return send(res,401,{error:'Email or password is not correct.'})}
   lockouts.delete(em);
+  if(u.totp_enabled)return send(res,200,{mfa:true,ticket:mfaTicket(u)});
   logA(u.org,'-',null,u.name,u.role,'session',null,'signed in',null);
   return send(res,200,{token:issue(u),mustChange:!!u.must_change,user:{id:u.id,name:u.name,role:u.role,org:u.org,email:u.email}});
  }
+ if(p==='/api/login/mfa'&&req.method==='POST')return mfaLogin(req,res);
  if(p==='/api/ingest/kri'&&req.method==='POST'){
   if(req.headers['x-api-key']!==INGEST_KEY)return send(res,401,{error:'Invalid API key'});
   const b=await readBody(req),profile=b.profile||'manufacturing';if(!okProfile(profile))return send(res,400,{error:'Bad profile'});
@@ -204,8 +216,10 @@ async function api(req,res,url){
  if(p==='/api/speakup/reply'&&req.method==='POST')return speakupReply(req,res);
  const user=authUser(req,url);if(!user)return send(res,401,{error:'Sign in required'});
  const profile=url.searchParams.get('profile')||'';
+ if(user.must_mfa&&!p.startsWith('/api/mfa')&&p!=='/api/me'&&p!=='/api/password')return send(res,403,{error:'Set up two-step sign-in first.',code:'must_mfa'});
+ if(p.startsWith('/api/mfa'))return mfaManage(req,res,p,user);
  if(user.must_change&&p!=='/api/me'&&p!=='/api/password')return send(res,403,{error:'Choose a new password first.',code:'must_change'});
- if(p==='/api/me')return send(res,200,{user,mustChange:!!user.must_change});
+ if(p==='/api/me')return send(res,200,{user,mustChange:!!user.must_change,mustMfa:!!user.must_mfa,mfaEnabled:!!user.totp_enabled});
  if(p==='/api/password'&&req.method==='POST'){
   const b=await readBody(req),row=db.prepare('SELECT * FROM users WHERE id=?').get(user.id);
   if(!crypto.timingSafeEqual(Buffer.from(hashPw(String(b.current||''),row.salt)),Buffer.from(row.hash)))return send(res,400,{error:'Current password is not correct.'});
@@ -225,9 +239,10 @@ async function api(req,res,url){
    const id=email.split('@')[0].replace(/[^a-z0-9]/g,'').slice(0,20)+crypto.randomBytes(2).toString('hex'),pw=tempPw();addUser(id,user.org,email,name,b.role,pw);db.prepare('UPDATE users SET must_change=1 WHERE id=?').run(id);
    logA(user.org,'-',null,user.name,user.role,'users',id,'created',{name,role:b.role});broadcast(user.org,'*',{type:'people'});return send(res,200,{id,tempPassword:pw});
   }
-  const m=/^\/api\/users\/([a-z0-9]+)(\/reset)?$/.exec(p);
+  const m=/^\/api\/users\/([a-z0-9]+)(\/reset|\/mfa-reset)?$/.exec(p);
   if(m){const t=db.prepare('SELECT * FROM users WHERE id=? AND org=?').get(m[1],user.org);if(!t)return send(res,404,{error:'No such user'});
-   if(m[2]&&req.method==='POST'){const pw=tempPw(),salt=crypto.randomBytes(16).toString('hex');db.prepare('UPDATE users SET salt=?,hash=?,must_change=1 WHERE id=?').run(salt,hashPw(pw,salt),t.id);logA(user.org,'-',null,user.name,user.role,'users',t.id,'password reset',{name:t.name});return send(res,200,{tempPassword:pw})}
+   if(m[2]==='/reset'&&req.method==='POST'){const pw=tempPw(),salt=crypto.randomBytes(16).toString('hex');db.prepare('UPDATE users SET salt=?,hash=?,must_change=1 WHERE id=?').run(salt,hashPw(pw,salt),t.id);logA(user.org,'-',null,user.name,user.role,'users',t.id,'password reset',{name:t.name});return send(res,200,{tempPassword:pw})}
+   if(m[2]==='/mfa-reset'&&req.method==='POST'){db.prepare('UPDATE users SET totp_enabled=0,totp_secret=NULL,recovery=NULL,totp_last=0 WHERE id=?').run(t.id);logA(user.org,'-',null,user.name,user.role,'users',t.id,'two-step reset',{name:t.name});return send(res,200,{ok:true})}
    if(req.method==='PATCH'){const b=await readBody(req),nr=b.role===undefined?t.role:b.role,na=b.active===undefined?t.active:(b.active?1:0);
     if(!ROLES_LIST.includes(nr))return send(res,400,{error:'Unknown role'});
     const admins=db.prepare("SELECT COUNT(*) c FROM users WHERE org=? AND role='Administrator' AND active=1 AND id<>?").get(user.org,t.id).c;
@@ -250,6 +265,8 @@ async function api(req,res,url){
   const ref=(url.searchParams.get('ref')||'').slice(0,40),name=path.basename(url.searchParams.get('name')||'').replace(/[^\w.\- ()]/g,'_').slice(0,120),ext=path.extname(name).slice(1).toLowerCase();
   if(!ref||!name)return send(res,400,{error:'Name and record are required'});if(!FILE_OK.has(ext))return send(res,400,{error:'This file type is not accepted. Allowed: '+[...FILE_OK].join(', ')});
   let buf;try{buf=await readRaw(req,10*1024*1024)}catch{return send(res,413,{error:'Files can be up to 10 MB.'})}if(!buf.length)return send(res,400,{error:'The file is empty.'});
+  if(SCAN.configured()){let r;try{r=await SCAN.scan(buf)}catch(e){console.error('scan failed:',e.message);if(process.env.FORGE_SCAN_FAILOPEN!=='1'){logA(user.org,profile,null,user.name,user.role,'files',ref,'file refused',{title:name,reason:'could not be scanned'});return send(res,503,{error:'The file could not be checked for viruses, so it was not saved. Try again shortly.'})}}
+   if(r&&!r.clean){logA(user.org,profile,null,user.name,user.role,'files',ref,'file blocked',{title:name,reason:'virus found',signature:r.signature});return send(res,422,{error:'This file was blocked because it appears to contain malware ('+r.signature+').'})}}
   const id=crypto.randomUUID(),dir=path.join(FILES_DIR,user.org);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,id),buf);
   const sha=crypto.createHash('sha256').update(buf).digest('hex');db.prepare('INSERT INTO files VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,user.org,profile,ref,name,buf.length,ext,user.name,new Date().toISOString(),sha);
   logA(user.org,profile,null,user.name,user.role,'files',ref,'file added',{title:name,sha256:sha.slice(0,16)});broadcast(user.org,profile,{type:'files',ref});return send(res,200,{id,name,size:buf.length});
@@ -383,6 +400,61 @@ async function assistant(req,res,user){
  const text=(j.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n').trim();
  logA(user.org,String(b.profile||'-').slice(0,40),null,user.name,user.role,'assistant',String(b.ref||'').slice(0,40)||null,'question asked',{chars:q.length,model});
  return send(res,200,{answer:text||'(no answer)',model,usage:j.usage||null})}
+// ---- two-step sign-in (TOTP) ----
+const mfaFails=new Map();
+async function mfaLogin(req,res){
+ let b;try{b=await readBody(req)}catch{return send(res,400,{error:'Bad request'})}
+ const t=readTicket(b.ticket);if(!t)return send(res,401,{error:'That sign-in expired. Start again.'});
+ const u=db.prepare('SELECT * FROM users WHERE id=? AND active=1').get(t.id);if(!u||!u.totp_enabled)return send(res,401,{error:'Start again.'});
+ const f=mfaFails.get(u.id)||{n:0,t:Date.now()};if(Date.now()-f.t>15*60e3){f.n=0;f.t=Date.now()}if(f.n>=5)return send(res,429,{error:'Too many wrong codes. Wait 15 minutes.'});
+ const input=String(b.code||'').trim();let okc=false;
+ const stepN=MFA.verify(u.totp_secret,input);if(stepN>=0&&stepN>(u.totp_last||0)){db.prepare('UPDATE users SET totp_last=? WHERE id=?').run(stepN,u.id);okc=true}
+ else if(/^[0-9a-f]{5}-[0-9a-f]{5}$/i.test(input)){const hs=JSON.parse(u.recovery||'[]'),h=shaS(input.toLowerCase()),i=hs.indexOf(h);if(i>=0){hs.splice(i,1);db.prepare('UPDATE users SET recovery=? WHERE id=?').run(JSON.stringify(hs),u.id);okc=true;logA(u.org,'-',null,u.name,u.role,'session',null,'recovery code used',{left:hs.length})}}
+ if(!okc){f.n++;mfaFails.set(u.id,f);logA(u.org,'-',null,u.name,u.role,'session',null,'failed two-step code',null);return send(res,401,{error:'That code is not correct.'})}
+ mfaFails.delete(u.id);logA(u.org,'-',null,u.name,u.role,'session',null,'signed in',{twoStep:true});
+ return send(res,200,{token:issue(u),mustChange:!!u.must_change,user:{id:u.id,name:u.name,role:u.role,org:u.org,email:u.email}})}
+async function mfaManage(req,res,p,user){
+ const row=db.prepare('SELECT * FROM users WHERE id=?').get(user.id);
+ if(p==='/api/mfa/status')return send(res,200,{enabled:!!row.totp_enabled,required:process.env.FORGE_REQUIRE_MFA==='1',recoveryLeft:JSON.parse(row.recovery||'[]').length});
+ const b=req.method==='POST'?await readBody(req):{};
+ if(p==='/api/mfa/setup'&&req.method==='POST'){if(row.totp_enabled)return send(res,400,{error:'Two-step sign-in is already on.'});const sec=MFA.newSecret();db.prepare('UPDATE users SET totp_secret=? WHERE id=?').run(sec,user.id);return send(res,200,{secret:sec,uri:MFA.uri(sec,user.email,'Forge GRC')})}
+ if(p==='/api/mfa/enable'&&req.method==='POST'){if(!row.totp_secret||row.totp_enabled)return send(res,400,{error:'Start setup first.'});const st=MFA.verify(row.totp_secret,b.code);if(st<0)return send(res,400,{error:'That code is not correct. Check the time on your phone and try again.'});
+  const codes=MFA.recoveryCodes();db.prepare('UPDATE users SET totp_enabled=1,totp_last=?,recovery=? WHERE id=?').run(st,JSON.stringify(codes.map(c=>shaS(c.toLowerCase()))),user.id);logA(user.org,'-',null,user.name,user.role,'session',null,'two-step turned on',null);return send(res,200,{ok:true,recovery:codes})}
+ if(p==='/api/mfa/disable'&&req.method==='POST'){if(process.env.FORGE_REQUIRE_MFA==='1')return send(res,403,{error:'Your organisation requires two-step sign-in.'});if(!row.totp_enabled)return send(res,400,{error:'It is not on.'});
+  if(!crypto.timingSafeEqual(Buffer.from(hashPw(String(b.password||''),row.salt)),Buffer.from(row.hash)))return send(res,400,{error:'Password is not correct.'});if(MFA.verify(row.totp_secret,b.code)<0)return send(res,400,{error:'That code is not correct.'});
+  db.prepare('UPDATE users SET totp_enabled=0,totp_secret=NULL,recovery=NULL,totp_last=0 WHERE id=?').run(user.id);logA(user.org,'-',null,user.name,user.role,'session',null,'two-step turned off',null);return send(res,200,{ok:true})}
+ return send(res,404,{error:'Not found'})}
+// ---- single sign-on (OpenID Connect) ----
+const oidcState=new Map(),oidcCodes=new Map();
+const baseUrl=req=>process.env.FORGE_PUBLIC_URL?process.env.FORGE_PUBLIC_URL.replace(/\/$/,''):((req.headers['x-forwarded-proto']||'http')+'://'+(req.headers['x-forwarded-host']||req.headers.host));
+const cookie=(req,n)=>{const m=new RegExp('(?:^|; )'+n+'=([^;]*)').exec(req.headers.cookie||'');return m?decodeURIComponent(m[1]):''};
+const sweepMap=m=>{const t=Date.now();for(const [k,v] of m)if(v.exp<t)m.delete(k)};
+function ssoFail(res,msg){res.writeHead(302,{location:'/index.html?ssoerror='+encodeURIComponent(msg),'set-cookie':'forge_oidc=; Path=/; Max-Age=0'});res.end()}
+async function oidcRoute(req,res,url,p){
+ if(!OIDC.configured())return send(res,404,{error:'Single sign-on is not set up.'});
+ try{
+  if(p==='/api/oidc/login'){sweepMap(oidcState);const state=crypto.randomBytes(16).toString('base64url'),nonce=crypto.randomBytes(16).toString('base64url'),pk=OIDC.pkce(),redirect=baseUrl(req)+'/api/oidc/callback';
+   oidcState.set(state,{nonce,verifier:pk.verifier,redirect,exp:Date.now()+10*60e3});const target=await OIDC.authUrl({redirect,state,nonce,challenge:pk.challenge});
+   res.writeHead(302,{location:target,'set-cookie':`forge_oidc=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${baseUrl(req).startsWith('https')?'; Secure':''}`});return res.end()}
+  if(p==='/api/oidc/callback'){const state=url.searchParams.get('state')||'',code=url.searchParams.get('code')||'',st=oidcState.get(state);oidcState.delete(state);
+   if(url.searchParams.get('error'))return ssoFail(res,'The sign-in was cancelled or refused.');
+   if(!st||st.exp<Date.now()||cookie(req,'forge_oidc')!==state||!code)return ssoFail(res,'That sign-in could not be verified. Please try again.');
+   const tok=await OIDC.exchange({code,redirect:st.redirect,verifier:st.verifier}),claims=await OIDC.verifyIdToken(tok.id_token,{nonce:st.nonce});
+   const email=String(claims.email||'').toLowerCase().trim();if(!email||claims.email_verified===false)return ssoFail(res,'Your account has no verified email address.');
+   let u=db.prepare('SELECT * FROM users WHERE email=?').get(email);
+   if(u&&!u.active)return ssoFail(res,'This account is switched off. Ask an administrator.');
+   if(!u){if(process.env.FORGE_OIDC_PROVISION!=='1')return ssoFail(res,'You do not have an account here yet. Ask an administrator to add you.');
+    const role=ROLES_LIST.includes(process.env.FORGE_OIDC_ROLE)?process.env.FORGE_OIDC_ROLE:'Business user',org=process.env.FORGE_OIDC_ORG||process.env.FORGE_ORG||'demo';
+    let name=String(claims.name||email.split('@')[0]).slice(0,60),n=2,base=name;while(db.prepare('SELECT 1 FROM users WHERE org=? AND name=?').get(org,name))name=base+' '+(n++);
+    const id=email.split('@')[0].replace(/[^a-z0-9]/g,'').slice(0,20)+crypto.randomBytes(2).toString('hex');addUser(id,org,email,name,role,crypto.randomBytes(24).toString('base64url'));u=db.prepare('SELECT * FROM users WHERE id=?').get(id);
+    logA(org,'-',null,'SSO','System','users',id,'created',{name,role,email})}
+   sweepMap(oidcCodes);const one=crypto.randomBytes(24).toString('base64url');oidcCodes.set(one,{uid:u.id,exp:Date.now()+60e3});
+   logA(u.org,'-',null,u.name,u.role,'session',null,'signed in',{sso:true});
+   res.writeHead(302,{location:'/index.html?sso='+one,'set-cookie':'forge_oidc=; Path=/; Max-Age=0'});return res.end()}
+  if(p==='/api/oidc/exchange'&&req.method==='POST'){const b=await readBody(req),c=oidcCodes.get(String(b.code||''));oidcCodes.delete(String(b.code||''));if(!c||c.exp<Date.now())return send(res,401,{error:'That sign-in link has expired. Sign in again.'});
+   const u=db.prepare('SELECT * FROM users WHERE id=? AND active=1').get(c.uid);if(!u)return send(res,401,{error:'Account not available.'});return send(res,200,{token:issue(u),mustChange:false,user:{id:u.id,name:u.name,role:u.role,org:u.org,email:u.email}})}
+  return send(res,404,{error:'Not found'})
+ }catch(e){console.error('oidc:',e.message);if(p==='/api/oidc/exchange')return send(res,502,{error:'Sign-in failed.'});return ssoFail(res,'Single sign-on failed: '+(/Bad signature|Nonce|audience|issuer|expired|key/.test(e.message)?'the identity provider response could not be trusted.':'the identity provider could not be reached.'))}}
 function serveStatic(req,res,url){
  let rel=decodeURIComponent(url.pathname);if(rel==='/')rel='/index.html';
  const f=path.normalize(path.join(ROOT,rel));

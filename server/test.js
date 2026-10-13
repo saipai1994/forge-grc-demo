@@ -87,5 +87,28 @@ const SYNC=require('../sync-core.js'),{server,db}=require('./server.js');
  assert.equal((await J('POST','/api/assistant',{question:'ok then',digest:'x'.repeat(70000)},adm)).s,413,'oversized data refused');
  const al=(await J('GET','/api/audit?profile=t',null,adm)).j.rows;assert(al.some(r=>r.coll==='assistant'&&!JSON.stringify(r.detail).includes('first')),'assistant use is logged without the question text');
  fake.close();delete process.env.ANTHROPIC_API_KEY;delete process.env.FORGE_LLM_URL;
+ // two-step sign-in
+ const MFA=require('./mfa.js');
+ const st1=(await J('POST','/api/mfa/setup',{},H(tokE))).j;assert(st1.secret&&/otpauth:/.test(st1.uri),'setup returns a secret');
+ assert.equal((await J('POST','/api/mfa/enable',{code:'000000'},H(tokE))).s,400,'wrong code does not enable');
+ const en=(await J('POST','/api/mfa/enable',{code:MFA.code(st1.secret)},H(tokE))).j;assert(en.ok&&en.recovery.length===8,'enabled with recovery codes');
+ let lg=(await J('POST','/api/login',{email:'evan@forge.demo',password:'forge-demo'},{})).j;assert(lg.mfa&&lg.ticket&&!lg.token,'password alone no longer signs in');
+ assert.equal((await J('POST','/api/login/mfa',{ticket:lg.ticket,code:'123456'},{})).s,401,'wrong code refused');
+ const okm=await J('POST','/api/login/mfa',{ticket:lg.ticket,code:MFA.code(st1.secret)},{});
+ if(okm.s===200)assert(okm.j.token,'correct code signs in');else assert.equal(okm.s,401,'the same code cannot be replayed (code just used to enable it)');
+ lg=(await J('POST','/api/login',{email:'evan@forge.demo',password:'forge-demo'},{})).j;
+ const rc=await J('POST','/api/login/mfa',{ticket:lg.ticket,code:en.recovery[0]},{});assert(rc.j.token,'a recovery code signs in');
+ lg=(await J('POST','/api/login',{email:'evan@forge.demo',password:'forge-demo'},{})).j;assert.equal((await J('POST','/api/login/mfa',{ticket:lg.ticket,code:en.recovery[0]},{})).s,401,'recovery code works only once');
+ assert.equal((await J('POST','/api/users/evan/mfa-reset',{},adm)).s,200,'admin can reset two-step');
+ assert((await J('POST','/api/login',{email:'evan@forge.demo',password:'forge-demo'},{})).j.token,'after reset, password signs in again');
+ // virus scanning (stand-in clamd)
+ const nett=require('net');const clam=nett.createServer(sk=>{let b=Buffer.alloc(0);sk.on('data',d=>{b=Buffer.concat([b,d]);if(b.subarray(b.length-4).equals(Buffer.alloc(4))){sk.end((b.includes('EICAR')?'stream: Eicar-Test-Signature FOUND':'stream: OK')+'\0')}})});
+ await new Promise(r=>clam.listen(0,r));process.env.FORGE_CLAMD_HOST='127.0.0.1';process.env.FORGE_CLAMD_PORT=clam.address().port;
+ const up2=n=>fetch(base+'/api/files?profile=t&ref=ISS-009&name='+n,{method:'POST',headers:adm,body:Buffer.from(n.startsWith('bad')?'X5O!EICAR-TEST':'%PDF-1.4 clean')});
+ assert.equal((await up2('good.pdf')).status,200,'clean file accepted');
+ const bad=await up2('bad.pdf');assert.equal(bad.status,422,'infected file blocked');assert(/Eicar/.test((await bad.json()).error),'signature reported');
+ clam.close();process.env.FORGE_CLAMD_PORT='1';assert.equal((await up2('good2.pdf')).status,503,'fails closed when the scanner is down');
+ process.env.FORGE_SCAN_FAILOPEN='1';assert.equal((await up2('good3.pdf')).status,200,'optionally fails open');
+ delete process.env.FORGE_CLAMD_HOST;delete process.env.FORGE_SCAN_FAILOPEN;
  console.log('All checks passed');server.close();db.close();process.exit(0);
 })().catch(e=>{console.error('FAILED:',e.message);process.exit(1)});
