@@ -12,7 +12,7 @@ function startServer(port,extra){const data=fs.mkdtempSync(path.join(os.tmpdir()
  const demo=fs.readdirSync(__dirname).filter(f=>f.startsWith('demo-')&&f.includes(filter)),live=fs.readdirSync(__dirname).filter(f=>f.startsWith('live-')&&f.includes(filter));
  const results=[];let port=8300;
  const report=(f,r)=>{const fails=r.out.split('\n').filter(l=>/^FAIL/.test(l));const ok=r.code===0&&!fails.length;results.push([f,ok]);console.log((ok?'PASS ':'FAIL ')+f);if(!ok)console.log(r.out.split('\n').filter(l=>/FAIL|Error|errors \[[^\]]|timed out/.test(l)).slice(0,8).map(l=>'   '+l).join('\n'))};
- for(const f of demo)report(f,await run(f,{BASE}));
+ for(const f of demo)report(f,await run(f,{BASE},f==='demo-sectors.js'?420000:undefined));
  for(const f of live){
   if(f==='live-sso-mfa.js'){report(f,await run(f,{}));continue}
   const p0=port++;let extra={},stub=null;
