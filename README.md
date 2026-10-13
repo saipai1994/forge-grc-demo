@@ -18,7 +18,7 @@ Pick a profile in the top bar. Each profile has its own risk register, seeded re
 
 Core: BFSI, Cross-industry, Manufacturing. More: Healthcare, Pharma & life sciences, Insurance, Telecommunications, Energy & utilities, Aviation & aerospace, Government, Retail & e-commerce, IT services & SaaS, Education, Mining & metals, Transport & logistics, Real estate & construction, Fintech & crypto.
 
-To add an industry, add a spec in `profiles-a.js` or `profiles-b.js` (see `profile-kit.js` for the format) and, if needed, new frameworks and a pack in `regulatory-library-sectors.js`.
+To add an industry, add a spec in a file in `sectors/` (see `profile-kit.js` for the format) and, if needed, new frameworks and a pack in `regulatory-library-sectors.js`.
 
 ## What is in the app
 
@@ -35,7 +35,7 @@ To add an industry, add a spec in `profiles-a.js` or `profiles-b.js` (see `profi
 | `index.html` | App shell, base views and the loader |
 | `library-enhancements.js` | Original manufacturing library and workflow demo |
 | `regulatory-library*.js`, `regulatory-clauses.js` | Built-in frameworks, sector frameworks, clause-level detail |
-| `profile-kit.js`, `profiles-a.js`, `profiles-b.js`, `industry-profiles.js` | Industry profiles and the profile switcher |
+| `profile-kit.js`, `sectors/*.js`, `industry-profiles.js` | Industry profiles and the profile switcher |
 | `openpages-modules.js` | Core engine: issues, controls, KRIs, policies, vendors, executive view |
 | `compliance-modules.js`, `privacy-resilience.js`, `risk-ops.js`, `rcsa.js`, `sector.js`, `standards-hub.js` | Feature modules |
 
