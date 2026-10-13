@@ -68,3 +68,9 @@ Open http://localhost:8080 and sign in (demo accounts are shown on the sign-in p
 - `Dockerfile` runs it in a container; mount a volume at `/data`.
 
 Not yet covered: single sign-on, organisation and entity setup, risks created in the legacy form (they stay in the browser), file uploads for evidence, email alerts, per-field merge of two people editing the same record at once (last write wins), and database backups. See the readiness review.
+
+## Running it for real
+
+Start with `docs/OPERATIONS.md` (deploy, settings, backups), `docs/SECURITY.md` and `docs/READINESS.md` (what is built and what still needs you). Drafts of the privacy policy, terms and data processing agreement are in `docs/legal/` and need a lawyer.
+
+What a new customer gets: an Organisation module (company profile, legal entities, business units, sites) with a setup wizard and a clean-start option, user management with roles and forced password change, notifications (in-app, chat webhook, email relay hook), file attachments on records, CSV import for six record types, and a printable board pack.

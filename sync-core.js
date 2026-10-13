@@ -18,7 +18,7 @@ function diff(base,cur,path,ops,depth){
   const bothKeyedish=(keyed(c)||(Array.isArray(c)&&!c.length&&keyed(b)))&&(b===undefined||Array.isArray(b));
   if(bothKeyedish){
    const bm=new Map((b||[]).map(x=>[x.id,x]));const seen=new Set();
-   c.forEach((x,i)=>{seen.add(x.id);const o=bm.get(x.id);if(!o||!same(o,x))ops.push({op:'put',p,id:x.id,rec:x,at:i,isNew:!o})});
+   c.forEach((x,i)=>{seen.add(x.id);const o=bm.get(x.id);if(!o||!same(o,x)){const op={op:'put',p,id:x.id,rec:x,at:i,isNew:!o};if(o)op.ch=Object.keys({...o,...x}).filter(f=>!same(o[f],x[f]));ops.push(op)}});
    (b||[]).forEach(x=>{if(!seen.has(x.id))ops.push({op:'del',p,id:x.id})});
   }else if(isObj(c)&&isObj(b)&&depth<3){diff(b,c,p,ops,depth+1)}
   else ops.push({op:'set',p,v:c});

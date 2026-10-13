@@ -19,5 +19,27 @@ const SYNC=require('../sync-core.js'),{server,db}=require('./server.js');
  r=await J('POST','/api/ingest/kri',{profile:'t',id:'K1',value:12},{'x-api-key':'dev-ingest-key'});assert(r.j.issue_raised,'breach raises an issue');
  const au=(await J('GET','/api/audit?profile=t',null,adm)).j.rows;assert(au.some(x=>x.action==='created'&&x.coll==='issues'),'audit trail written');
  const sf=await fetch(base+'/server/server.js');assert.equal(sf.status,404,'server code is not served');
+ // users, passwords, notifications, files
+ r=await J('POST','/api/users',{email:'new.person@example.com',name:'New Person',role:'Function user'},bus);assert.equal(r.s,403,'only admin creates users');
+ r=await J('POST','/api/users',{email:'new.person@example.com',name:'New Person',role:'Function user'},adm);assert(r.j.tempPassword,'admin creates user');const uid=r.j.id,tmp=r.j.tempPassword;
+ let tk=(await J('POST','/api/login',{email:'new.person@example.com',password:tmp},{})).j;assert(tk.mustChange,'must change password');const nh={authorization:'Bearer '+tk.token};
+ assert.equal((await J('GET','/api/state?profile=t',null,nh)).s,403,'blocked until password changed');
+ assert.equal((await J('POST','/api/password',{current:tmp,next:'short'},nh)).s,400,'weak password refused');
+ assert.equal((await J('POST','/api/password',{current:tmp,next:'Better-pass-2026'},nh)).s,200,'password changed');
+ assert.equal((await J('GET','/api/state?profile=t',null,nh)).s,200,'access after change');
+ r=await J('PATCH','/api/users/'+uid,{role:'Auditor'},adm);assert.equal(r.s,200,'role change');
+ r=await J('PATCH','/api/users/admin',{active:false},adm);
+ for(let i=0;i<5;i++)await J('POST','/api/login',{email:'sam@forge.demo',password:'nope'},{});assert.equal((await J('POST','/api/login',{email:'sam@forge.demo',password:'forge-demo'},{})).s,429,'account locks after repeated failures');
+ await J('POST','/api/ops',{profile:'t',ops:[{op:'put',p:['issues'],id:'ISS-009',isNew:true,at:0,rec:{id:'ISS-009',title:'n',owner:'Priya Shah',sev:'High',due:'2026-01-01',status:'Open'}}]},adm);
+ const nt=(await J('GET','/api/notifications?profile=t',null,adm)).j.rows;assert(nt.some(n=>n.kind==='assigned'&&n.who==='Priya Shah'),'assignment notification');
+ server.__sweep&&0;require('./server.js').sweep();const nt2=(await J('GET','/api/notifications?profile=t',null,adm)).j.rows;assert(nt2.some(n=>n.kind==='overdue'),'overdue notification');
+ // field-level merge: two people change different fields of one record
+ await J('POST','/api/ops',{profile:'t',ops:[{op:'put',p:['issues'],id:'ISS-009',at:0,ch:['title'],rec:{id:'ISS-009',title:'renamed',owner:'Priya Shah',sev:'High',due:'2026-01-01',status:'Open'}}]},adm);
+ await J('POST','/api/ops',{profile:'t',ops:[{op:'put',p:['issues'],id:'ISS-009',at:0,ch:['status'],rec:{id:'ISS-009',title:'n',owner:'Priya Shah',sev:'High',due:'2026-01-01',status:'In progress'}}]},adm);
+ const st=(await J('GET','/api/state?profile=t',null,adm)).j.state.issues.find(i=>i.id==='ISS-009');assert(st.title==='renamed'&&st.status==='In progress','field-level merge keeps both edits');
+ const up=await fetch(base+'/api/files?profile=t&ref=ISS-009&name=evidence.pdf',{method:'POST',headers:adm,body:Buffer.from('%PDF-1.4 test')});assert.equal(up.status,200,'file upload');const fid=(await up.json()).id;
+ assert.equal((await fetch(base+'/api/files?profile=t&ref=ISS-009&name=x.exe',{method:'POST',headers:adm,body:Buffer.from('MZ')})).status,400,'exe refused');
+ const dl=await fetch(base+'/api/files/'+fid,{headers:adm});assert.equal(Buffer.from(await dl.arrayBuffer()).toString().slice(0,5),'%PDF-','download');
+ assert.equal((await fetch(base+'/api/files/'+fid)).status,401,'download needs sign-in');
  console.log('All checks passed');server.close();db.close();process.exit(0);
 })().catch(e=>{console.error('FAILED:',e.message);process.exit(1)});
