@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Speak up</title>
+<style>
+:root{--ink:#1D2D3E;--sub:#556B82;--line:#D9D9D9;--brand:#0070F2;--bg:#F5F6F7;--bad:#AA0808;--good:#256F3A}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "72","Segoe UI",Arial,sans-serif}
+main{max-width:640px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:28px;margin:0 0 6px}p{margin:0 0 14px;color:var(--sub)}
+.card{background:#fff;border-radius:16px;box-shadow:0 0 2px #00000026,0 2px 4px #0000001f;padding:22px;margin-bottom:18px}
+label{display:block;font-weight:600;margin:14px 0 4px;font-size:14px}
+select,textarea,input{width:100%;font:inherit;padding:10px 12px;border:1px solid #BCC3CA;border-radius:8px;background:#fff;color:var(--ink)}
+textarea{min-height:170px;resize:vertical}
+button{font:inherit;font-weight:700;border:0;border-radius:8px;background:var(--brand);color:#fff;padding:11px 18px;cursor:pointer;margin-top:16px}
+button.alt{background:#fff;color:var(--brand);border:1px solid var(--brand)}
+:focus-visible{outline:3px solid #0070F2;outline-offset:2px}
+.note{background:#EBF5FE;border-radius:10px;padding:12px 14px;font-size:14px;color:var(--ink)}
+.ok{background:#EAF4EC;border-radius:10px;padding:14px;margin-top:14px}
+.ok code{font:700 20px "DM Mono",monospace;letter-spacing:1px;display:block;margin:4px 0 10px}
+.err{color:var(--bad);font-weight:600;margin-top:10px;min-height:20px}
+.upd{border-left:3px solid var(--line);padding:2px 0 2px 12px;margin:10px 0;font-size:14px}.upd small{color:var(--sub)}
+</style>
+</head>
+<body>
+<main>
+ <h1>Speak up</h1>
+ <p>Report a concern about misconduct, safety, fraud, privacy or anything else that worries you. You can do this without giving your name.</p>
+ <div class="note" role="note">We do not record your name, device or network address. If you add contact details they are seen only by the administrators who handle reports. After you send a report you get two codes. Keep them: they are the only way to check progress or add information.</div>
+
+ <form id="f" class="card" aria-labelledby="t1">
+  <h2 id="t1" style="margin:0 0 4px;font-size:20px">Make a report</h2>
+  <label for="cat">What is it about?</label>
+  <select id="cat"></select>
+  <label for="body">What happened? <span style="font-weight:400;color:var(--sub)">(what, who, when, where)</span></label>
+  <textarea id="body" required minlength="20" maxlength="5000"></textarea>
+  <label for="contact">Contact details <span style="font-weight:400;color:var(--sub)">(optional, only if you are happy to be contacted)</span></label>
+  <input id="contact" autocomplete="off" maxlength="200">
+  <div class="err" id="err" role="alert"></div>
+  <button type="submit">Send report</button>
+  <div id="done" class="ok" hidden></div>
+ </form>
+
+ <form id="g" class="card" aria-labelledby="t2">
+  <h2 id="t2" style="margin:0 0 4px;font-size:20px">Check progress or add information</h2>
+  <label for="ref">Reference code</label><input id="ref" autocomplete="off" placeholder="ABCD-2345">
+  <label for="sec">Secret code</label><input id="sec" autocomplete="off" type="password">
+  <div class="err" id="err2" role="alert"></div>
+  <button type="submit" class="alt">Check</button>
+  <div id="status" hidden></div>
+ </form>
+</main>
+<script>
+const q=new URLSearchParams(location.search);const API=(q.get('server')||location.origin).replace(/\/$/,'');
+const $=id=>document.getElementById(id);
+const CATS=['Fraud or financial misconduct','Bribery or corruption','Harassment or discrimination','Health, safety or environment','Data or privacy breach','Conflict of interest','Retaliation','Other'];
+$('cat').innerHTML=CATS.map(c=>`<option>${c}</option>`).join('');
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function post(url,body){const r=await fetch(API+url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),referrerPolicy:'no-referrer'});return{ok:r.ok,j:await r.json().catch(()=>({}))}}
+$('f').onsubmit=async e=>{e.preventDefault();$('err').textContent='';
+ try{const r=await post('/api/speakup',{category:$('cat').value,body:$('body').value,contact:$('contact').value});
+  if(!r.ok){$('err').textContent=r.j.error||'Could not send the report.';return}
+  $('done').hidden=false;$('done').innerHTML=`<b>Thank you. Your report has been received.</b><br>Reference code<code>${esc(r.j.ref)}</code>Secret code<code>${esc(r.j.secret)}</code>${esc(r.j.message)}`;
+  $('body').value='';$('contact').value='';$('ref').value=r.j.ref;$('sec').value=r.j.secret;
+ }catch{$('err').textContent='Could not reach the service. Please try again.'}};
+let last=null;
+$('g').onsubmit=async e=>{e.preventDefault();$('err2').textContent='';
+ try{const r=await fetch(API+`/api/speakup/status?ref=${encodeURIComponent($('ref').value)}&secret=${encodeURIComponent($('sec').value)}`,{referrerPolicy:'no-referrer'});const j=await r.json();
+  if(!r.ok){$('err2').textContent=j.error||'Not found.';$('status').hidden=true;return}last=j;paint(j)}catch{$('err2').textContent='Could not reach the service.'}};
+function paint(j){const s=$('status');s.hidden=false;s.innerHTML=`<p style="margin-top:14px"><b>Status:</b> ${esc(j.status)} · received ${esc(j.received)}</p>${j.updates.map(u=>`<div class="upd"><small>${esc(u.ts.slice(0,10))} · ${esc(u.by)}</small><br>${esc(u.text)}</div>`).join('')}
+ <label for="more">Add information</label><textarea id="more" style="min-height:90px" maxlength="3000"></textarea><button type="button" id="send">Send</button><div class="err" id="err3" role="alert"></div>`;
+ $('send').onclick=async()=>{const t=$('more').value.trim();if(t.length<2)return;const r=await post('/api/speakup/reply',{ref:$('ref').value,secret:$('sec').value,text:t});if(!r.ok){$('err3').textContent=r.j.error||'Could not send.';return}$('g').dispatchEvent(new Event('submit',{cancelable:true}))}}
+</script>
+</body>
+</html>

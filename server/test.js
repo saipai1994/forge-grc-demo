@@ -41,5 +41,27 @@ const SYNC=require('../sync-core.js'),{server,db}=require('./server.js');
  assert.equal((await fetch(base+'/api/files?profile=t&ref=ISS-009&name=x.exe',{method:'POST',headers:adm,body:Buffer.from('MZ')})).status,400,'exe refused');
  const dl=await fetch(base+'/api/files/'+fid,{headers:adm});assert.equal(Buffer.from(await dl.arrayBuffer()).toString().slice(0,5),'%PDF-','download');
  assert.equal((await fetch(base+'/api/files/'+fid)).status,401,'download needs sign-in');
+ // approvals: decisions only by the approver or an admin, never the requester; no self-created approvals
+ await J('POST','/api/init',{profile:'ap',state:{v:1,seq:{},acc:[{id:'ACC-1',risk:'R-1',title:'t',requestedBy:'Priya Shah',approver:'Jordan Lee',status:'Pending'}],plans:[]}},adm);
+ const tokP=await login('priya'),tokE=await login('evan'),tokJ=await login('jordan');const H=t=>({authorization:'Bearer '+t});
+ const dec=(t,st)=>J('POST','/api/ops',{profile:'ap',ops:[{op:'put',p:['acc'],id:'ACC-1',at:0,ch:['status'],rec:{id:'ACC-1',risk:'R-1',title:'t',requestedBy:'Priya Shah',approver:'Jordan Lee',status:st}}]},H(t));
+ assert.equal((await dec(tokP,'Active')).j.denied,1,'requester cannot approve own request');
+ assert.equal((await dec(tokE,'Active')).j.denied,1,'a non-approver cannot approve');
+ assert.equal((await dec(tokJ,'Active')).j.denied||0,0,'the named approver can approve');
+ r=await J('POST','/api/ops',{profile:'ap',ops:[{op:'put',p:['acc'],id:'ACC-2',isNew:true,at:0,rec:{id:'ACC-2',status:'Active',requestedBy:'Evan Brooks',approver:'Jordan Lee'}}]},H(tokE));assert.equal(r.j.denied,1,'cannot create an already-approved acceptance');
+ const nn=(await J('GET','/api/notifications?profile=ap',null,adm)).j.rows;assert(nn.some(n=>n.kind==='approval'&&/ACC-1/.test(n.title)),'requester notified of decision');
+ // speak-up
+ let su=await J('POST','/api/speakup',{category:'Bribery or corruption',body:'A supplier offered a manager a cash payment to win a contract last week.',contact:'reporter@example.com'},{});assert(su.j.ref&&su.j.secret,'anonymous report accepted without sign-in');
+ assert.equal((await J('POST','/api/speakup',{body:'short'},{})).s,400,'too-short report refused');
+ assert.equal((await J('GET','/api/speakup/status?ref='+su.j.ref+'&secret=wrong',null,{})).s,404,'wrong secret refused');
+ assert.equal((await J('GET','/api/speakup',null,H(tokP))).s,403,'function user cannot read reports');
+ const lst=(await J('GET','/api/speakup',null,adm)).j.rows;assert(lst.length===1&&lst[0].contact==='reporter@example.com','administrator reads report incl. contact');
+ const audv=(await J('GET','/api/speakup',null,aud)).j.rows[0];assert(audv.contact!=='reporter@example.com','auditor does not see contact details');
+ const sid=lst[0].id;
+ assert.equal((await J('PATCH','/api/speakup/'+sid,{assignee:'Priya Shah'},adm)).s,400,'investigator must be admin or auditor');
+ await J('PATCH','/api/speakup/'+sid,{status:'Investigating',assignee:'Audrey Kim',note:'Interviewed the manager.',public:false},adm);
+ await J('PATCH','/api/speakup/'+sid,{note:'Thank you, we are looking into this.',public:true},aud);
+ const stt=(await J('GET','/api/speakup/status?ref='+su.j.ref+'&secret='+su.j.secret,null,{})).j;assert.equal(stt.status,'Investigating','reporter sees status');assert(stt.updates.some(u=>/looking into/.test(u.text))&&!stt.updates.some(u=>/Interviewed/.test(u.text)),'reporter sees public replies only');
+ assert.equal((await J('POST','/api/speakup/reply',{ref:su.j.ref,secret:su.j.secret,text:'Here is more detail.'},{})).s,200,'reporter can add information');
  console.log('All checks passed');server.close();db.close();process.exit(0);
 })().catch(e=>{console.error('FAILED:',e.message);process.exit(1)});

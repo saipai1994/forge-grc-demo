@@ -21,6 +21,7 @@ CREATE INDEX IF NOT EXISTS audit_idx ON audit(org,profile,id);
 CREATE TABLE IF NOT EXISTS notes(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT NOT NULL,org TEXT NOT NULL,profile TEXT NOT NULL,kind TEXT NOT NULL,title TEXT NOT NULL,body TEXT,ref TEXT,who TEXT,dedupe TEXT,email_status TEXT);
 CREATE UNIQUE INDEX IF NOT EXISTS notes_dedupe ON notes(org,profile,dedupe) WHERE dedupe IS NOT NULL;
 CREATE TABLE IF NOT EXISTS note_read(user TEXT NOT NULL,note INTEGER NOT NULL,PRIMARY KEY(user,note));
+CREATE TABLE IF NOT EXISTS speakup(id TEXT PRIMARY KEY,org TEXT NOT NULL,ref TEXT UNIQUE NOT NULL,secret_hash TEXT NOT NULL,ts TEXT NOT NULL,category TEXT,body TEXT,contact TEXT,status TEXT NOT NULL,assignee TEXT,outcome TEXT,updates TEXT);
 CREATE TABLE IF NOT EXISTS files(id TEXT PRIMARY KEY,org TEXT NOT NULL,profile TEXT NOT NULL,ref TEXT NOT NULL,name TEXT NOT NULL,size INTEGER,type TEXT,by TEXT,ts TEXT,sha TEXT);`);
 try{db.exec('ALTER TABLE users ADD COLUMN must_change INTEGER DEFAULT 0')}catch{}
 
@@ -85,11 +86,19 @@ function note(org,profile,n){
 function onChange(org,profile,op,res,user){
  if(op.p.join('.')==='issues'&&op.op==='put'){const r=op.rec;
   if(r.owner&&r.owner!==user.name&&(res.kind==='create'||(res.before&&res.before.owner!==r.owner)))note(org,profile,{kind:'assigned',title:`Issue ${r.id} assigned to you`,body:`${r.title} (${r.sev}, due ${r.due}) · by ${user.name}`,ref:r.id,who:r.owner})}
+ const tp=op.p.join('.'),ac=APPROVALS[tp];
+ if(ac&&op.op==='put'){const r=op.rec,ex=res.before,label=APPR_LABEL[tp],req=r[ac.who],pend=ac.from[0],apv=r[ac.approver||'approver'];
+  if(r.status===pend&&(!ex||ex.status!==pend)&&apv&&apv!==user.name)note(org,profile,{kind:'approval',title:`${label} ${r.id} needs your decision`,body:`${r.title||r.description||r.id} · from ${req}`,ref:r.id,who:apv});
+  if(ex&&ac.from.includes(ex.status)&&!ac.from.includes(r.status)&&req&&req!==user.name)note(org,profile,{kind:'approval',title:`${label} ${r.id} ${String(r.status).toLowerCase()}`,body:`Decided by ${user.name}${r.comment?': '+r.comment:''}`,ref:r.id,who:req})}
  if(op.p.join('.')==='kris'&&op.op==='put'){const k=op.rec,v=k.series[k.series.length-1],pv=res.before&&res.before.series[res.before.series.length-1];
   if(v>=k.red&&!(pv>=k.red))note(org,profile,{kind:'breach',title:`Indicator ${k.id} is in red`,body:`${k.name}: ${v}${k.unit==='%'?'%':''} (red at ${k.red})`,ref:k.id,who:k.owner})}}
+const addDaysISO=(iso,n)=>{const d=new Date(iso+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
 function sweep(){ // overdue items, once per day per record
  const t=today();for(const d of db.prepare('SELECT org,profile,json FROM docs').all()){let st;try{st=JSON.parse(d.json)}catch{continue}
   (st.issues||[]).filter(i=>i.status!=='Closed'&&i.due&&i.due<t).forEach(i=>note(d.org,d.profile,{kind:'overdue',title:`Issue ${i.id} is overdue`,body:`${i.title} was due ${i.due}`,ref:i.id,who:i.owner,dedupe:`overdue:${i.id}:${t}`}));
+  (st.acc||[]).filter(a=>a.status==='Pending'&&a.created&&addDaysISO(a.created,7)<t).forEach(a=>note(d.org,d.profile,{kind:'overdue',title:`Approval ${a.id} is past its SLA`,body:`${a.title} has waited since ${a.created}`,ref:a.id,who:a.approver,dedupe:`accsla:${a.id}:${t}`}));
+  (st.acc||[]).filter(a=>a.status==='Active'&&a.expires&&a.expires>=t&&a.expires<=addDaysISO(t,14)).forEach(a=>note(d.org,d.profile,{kind:'overdue',title:`Risk acceptance ${a.id} expires soon`,body:`${a.title} expires ${a.expires}`,ref:a.id,who:a.requestedBy,dedupe:`accexp:${a.id}:${t}`}));
+  (st.plans||[]).filter(p=>p.status==='Pending approval'&&p.created&&addDaysISO(p.created,10)<t).forEach(p=>note(d.org,d.profile,{kind:'overdue',title:`Plan ${p.id} approval is past its SLA`,body:p.title,ref:p.id,who:p.approver,dedupe:`plansla:${p.id}:${t}`}));
   (st.policies||[]).filter(p=>p.status==='Published'&&p.review&&p.review<t).forEach(p=>note(d.org,d.profile,{kind:'overdue',title:`Policy ${p.id} review is overdue`,body:`${p.title} was due for review ${p.review}`,ref:p.id,who:p.owner,dedupe:`polreview:${p.id}:${t}`}))}}
 
 // ---- live updates (server-sent events) ----
@@ -106,6 +115,7 @@ function applyOps(org,profile,user,ops,source){
   // two people creating a record at the same moment can pick the same number: give the newer one the next free number
   if(op.op==='put'&&op.isNew){const arr=SYNC_get(st,op.p);if(arr&&arr.some(x=>x.id===op.id)){const m=/^(.*?)(\d+)$/.exec(op.id);if(m){const used=arr.map(x=>x.id).filter(i=>i.startsWith(m[1])).map(i=>+i.slice(m[1].length)||0);const nid=m[1]+String(Math.max(...used)+1).padStart(m[2].length,'0');renames[op.id]=nid;op.rec={...op.rec,id:nid};op.id=nid}}}
   if(op.op==='put'&&!op.isNew&&Array.isArray(op.ch)){const arr0=SYNC_get(st,op.p),ex=arr0&&arr0.find(x=>x.id===op.id);if(ex){const m={...ex};op.ch.forEach(f=>{if(f in op.rec)m[f]=op.rec[f];else delete m[f]});op.rec=m}}
+  const gate=approvalGate(st,op,user);if(gate){denied.push(op);continue}
   const res=SYNC.apply(st,op);if(!res)continue;
   applied.push(op);try{onChange(org,profile,op,res,user)}catch(e){console.error('notify',e.message)}
   const coll=op.p.join('.');
@@ -116,6 +126,22 @@ function applyOps(org,profile,user,ops,source){
  if(applied.length){putDoc(org,profile,rev,st);broadcast(org,profile,{type:'ops',rev,by:{name:user.name,role:user.role,source:source||'user'},ops:applied})}
  return{rev:applied.length?rev:doc.rev,applied,denied,renames,seq:st.seq};
 }
+// Approval decisions can only be made by the named approver or an administrator, never by the requester.
+const APPR_LABEL={acc:'Risk acceptance',plans:'Treatment plan',exc:'Policy exception',coi:'Declaration'};
+const APPROVALS={
+ acc:{init:'Pending',from:['Pending'],to:['Active','Rejected'],revoke:'Revoked',who:'requestedBy'},
+ plans:{init:'Draft',from:['Pending approval'],to:['Approved','Rejected'],who:'owner'},
+ exc:{init:'Pending',from:['Pending'],to:['Approved','Rejected'],who:'requestedBy',approver:'approver'},
+ coi:{init:'Declared',from:['Declared','Under review'],to:['Cleared','Mitigated','Declined'],who:'person',approver:'reviewer'}};
+function approvalGate(st,op,user){
+ const c=op.p.length===1&&APPROVALS[op.p[0]];if(!c||op.op==='set')return false;
+ if(op.op==='del')return user.role!=='Administrator';
+ if(op.op!=='put')return false;const arr=st[op.p[0]],ex=Array.isArray(arr)&&arr.find(x=>x.id===op.id),isAdmin=user.role==='Administrator';
+ if(!ex){if(!Array.isArray(arr))return false;return !isAdmin&&op.rec.status!==c.init}
+ if(ex.status===op.rec.status)return false;
+ if(c.to.includes(op.rec.status)){const ap=ex[c.approver||'approver'];return !(c.from.includes(ex.status)&&(isAdmin||user.name===ap)&&user.name!==ex[c.who])}
+ if(c.revoke&&op.rec.status===c.revoke)return !(isAdmin||user.name===ex[c.approver||'approver']);
+ return false}
 function SYNC_get(st,p){let o=st;for(const k of p){if(o==null)return undefined;o=o[k]}return Array.isArray(o)?o:undefined}
 
 // ---- ingest: a source system reports an indicator value ----
@@ -169,6 +195,9 @@ async function api(req,res,url){
   const b=await readBody(req),profile=b.profile||'manufacturing';if(!okProfile(profile))return send(res,400,{error:'Bad profile'});
   const r=ingestKri(b.org||'demo',profile,b);return send(res,r.status,r);
  }
+ if(p==='/api/speakup'&&req.method==='POST')return speakupSubmit(req,res);
+ if(p==='/api/speakup/status'&&req.method==='GET')return speakupStatus(url,res);
+ if(p==='/api/speakup/reply'&&req.method==='POST')return speakupReply(req,res);
  const user=authUser(req,url);if(!user)return send(res,401,{error:'Sign in required'});
  const profile=url.searchParams.get('profile')||'';
  if(user.must_change&&p!=='/api/me'&&p!=='/api/password')return send(res,403,{error:'Choose a new password first.',code:'must_change'});
@@ -203,8 +232,9 @@ async function api(req,res,url){
     broadcast(user.org,'*',{type:'people'});return send(res,200,{ok:true})}}
   return send(res,404,{error:'Not found'});
  }
+ if(p.startsWith('/api/speakup'))return speakupStaff(req,res,url,p,user);
  if(p==='/api/notifications'&&req.method==='GET'){
-  const rows=db.prepare('SELECT n.*,(SELECT 1 FROM note_read r WHERE r.user=? AND r.note=n.id) AS seen FROM notes n WHERE n.org=? AND n.profile=? AND (n.who IS NULL OR n.who=? OR ?=\'Administrator\') ORDER BY n.id DESC LIMIT 100').all(user.id,user.org,profile,user.name,user.role);
+  const rows=db.prepare('SELECT n.*,(SELECT 1 FROM note_read r WHERE r.user=? AND r.note=n.id) AS seen FROM notes n WHERE n.org=? AND (n.profile=? OR n.profile=\'*\') AND (n.who IS NULL OR n.who=? OR ?=\'Administrator\') ORDER BY n.id DESC LIMIT 100').all(user.id,user.org,profile,user.name,user.role);
   return send(res,200,{rows:rows.map(r=>({id:r.id,ts:r.ts,kind:r.kind,title:r.title,body:r.body,ref:r.ref,who:r.who,seen:!!r.seen,email:r.email_status}))});
  }
  if(p==='/api/notifications/read'&&req.method==='POST'){const b=await readBody(req);const ids=Array.isArray(b.ids)?b.ids:[];const ins=db.prepare('INSERT OR IGNORE INTO note_read VALUES(?,?)');ids.slice(0,200).forEach(i=>ins.run(user.id,+i));return send(res,200,{ok:true})}
@@ -253,6 +283,48 @@ async function api(req,res,url){
  return send(res,404,{error:'Not found'});
 }
 
+// ---- speak-up: anonymous reports. Kept out of the shared workspace so only investigators can read them.
+const SU_CATS=['Fraud or financial misconduct','Bribery or corruption','Harassment or discrimination','Health, safety or environment','Data or privacy breach','Conflict of interest','Retaliation','Other'];
+const suRate=new Map();
+const suOrg=()=>process.env.FORGE_PUBLIC_ORG||'demo';
+const refCode=()=>{const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789',r=crypto.randomBytes(8);let o='';for(let i=0;i<8;i++)o+=a[r[i]%a.length];return o.slice(0,4)+'-'+o.slice(4)};
+const shaS=x=>crypto.createHash('sha256').update(String(x)).digest('hex');
+async function speakupSubmit(req,res){
+ const ip=req.socket.remoteAddress||'?',k=shaS(ip+'|'+Math.floor(Date.now()/3600e3)),n=(suRate.get(k)||0)+1;suRate.set(k,n);if(suRate.size>5000)suRate.clear();
+ if(n>5)return send(res,429,{error:'Too many reports from this connection. Try again later.'});
+ let b;try{b=await readBody(req)}catch{return send(res,400,{error:'Could not read the report.'})}
+ const body=String(b.body||'').trim(),cat=SU_CATS.includes(b.category)?b.category:'Other',contact=String(b.contact||'').trim().slice(0,200);
+ if(body.length<20)return send(res,400,{error:'Please describe what happened in at least a couple of sentences.'});if(body.length>5000)return send(res,400,{error:'Reports can be up to 5,000 characters. Add more in a follow-up.'});
+ const n2=db.prepare('SELECT COUNT(*) c FROM speakup WHERE org=?').get(suOrg()).c+1,id='SU-'+String(1000+n2),ref=refCode(),secret=crypto.randomBytes(9).toString('base64url');
+ db.prepare('INSERT INTO speakup VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(id,suOrg(),ref,shaS(secret),new Date().toISOString(),cat,body,contact,'Received',null,null,JSON.stringify([{ts:new Date().toISOString(),by:'System',text:'Report received.',public:true}]));
+ logA(suOrg(),'-',null,'Reporter','External','speakup',id,'report received',{category:cat});
+ for(const u of db.prepare("SELECT name FROM users WHERE org=? AND active=1 AND role IN ('Administrator','Auditor')").all(suOrg()))note(suOrg(),'*',{kind:'speakup',title:'New speak-up report received',body:`${id} · ${cat}`,ref:id,who:u.name});
+ return send(res,200,{ref,secret,message:'Keep these two codes. They are the only way to check progress or add information. We do not record who you are.'});
+}
+function suFind(ref,secret){const r=db.prepare('SELECT * FROM speakup WHERE ref=?').get(String(ref||'').toUpperCase().trim());if(!r)return null;const h=shaS(String(secret||'').trim());return crypto.timingSafeEqual(Buffer.from(h),Buffer.from(r.secret_hash))?r:null}
+function speakupStatus(url,res){const r=suFind(url.searchParams.get('ref'),url.searchParams.get('secret'));if(!r)return send(res,404,{error:'No report matches those codes.'});
+ return send(res,200,{status:r.status,received:r.ts.slice(0,10),updates:JSON.parse(r.updates||'[]').filter(u=>u.public)})}
+async function speakupReply(req,res){let b;try{b=await readBody(req)}catch{return send(res,400,{error:'Bad request'})}const r=suFind(b.ref,b.secret);if(!r)return send(res,404,{error:'No report matches those codes.'});
+ const text=String(b.text||'').trim();if(text.length<2||text.length>3000)return send(res,400,{error:'Write a message of up to 3,000 characters.'});
+ const up=JSON.parse(r.updates||'[]');up.push({ts:new Date().toISOString(),by:'Reporter',text,public:true});db.prepare('UPDATE speakup SET updates=? WHERE id=?').run(JSON.stringify(up),r.id);
+ if(r.assignee)note(r.org,'*',{kind:'speakup',title:`New message on ${r.id}`,body:'The reporter added information.',ref:r.id,who:r.assignee});return send(res,200,{ok:true})}
+async function speakupStaff(req,res,url,p,user){
+ if(!['Administrator','Auditor'].includes(user.role))return send(res,403,{error:'Speak-up reports are restricted to administrators and auditors.'});
+ const view=r=>({id:r.id,ts:r.ts,category:r.category,body:r.body,contact:user.role==='Administrator'?r.contact:(r.contact?'(held by an administrator)':''),status:r.status,assignee:r.assignee,outcome:r.outcome,updates:JSON.parse(r.updates||'[]')});
+ if(p==='/api/speakup'&&req.method==='GET'){logA(user.org,'-',null,user.name,user.role,'speakup',null,'list opened',null);return send(res,200,{rows:db.prepare('SELECT * FROM speakup WHERE org=? ORDER BY ts DESC').all(user.org).map(view),categories:SU_CATS})}
+ const m=/^\/api\/speakup\/(SU-\d+)$/.exec(p);if(!m)return send(res,404,{error:'Not found'});
+ const r=db.prepare('SELECT * FROM speakup WHERE id=? AND org=?').get(m[1],user.org);if(!r)return send(res,404,{error:'No such report'});
+ if(req.method==='GET'){logA(user.org,'-',null,user.name,user.role,'speakup',r.id,'report opened',null);return send(res,200,{row:view(r)})}
+ if(req.method==='PATCH'){const b=await readBody(req),up=JSON.parse(r.updates||'[]'),ch=[];
+  const STS=['Received','Under review','Investigating','Closed - substantiated','Closed - not substantiated','Closed - no action'];
+  let status=r.status,assignee=r.assignee,outcome=r.outcome;
+  if(b.status!==undefined){if(!STS.includes(b.status))return send(res,400,{error:'Unknown status'});if(b.status!==status){ch.push({field:'status',from:status,to:b.status});status=b.status;up.push({ts:new Date().toISOString(),by:user.name,text:'Status changed to '+status+'.',public:true})}}
+  if(b.assignee!==undefined){const a=b.assignee||null;if(a){const ok=db.prepare("SELECT 1 FROM users WHERE org=? AND name=? AND role IN ('Administrator','Auditor') AND active=1").get(user.org,a);if(!ok)return send(res,400,{error:'Investigators must be administrators or auditors.'})}if(a!==assignee){ch.push({field:'assignee',from:assignee||'',to:a||''});assignee=a}}
+  if(b.outcome!==undefined&&b.outcome!==outcome){outcome=String(b.outcome).slice(0,3000);ch.push({field:'outcome',from:'',to:'updated'})}
+  if(b.note){up.push({ts:new Date().toISOString(),by:user.name,text:String(b.note).slice(0,3000),public:!!b.public});ch.push({field:'note',from:'',to:b.public?'reply to reporter':'internal note'})}
+  db.prepare('UPDATE speakup SET status=?,assignee=?,outcome=?,updates=? WHERE id=?').run(status,assignee,outcome,JSON.stringify(up),r.id);
+  if(ch.length)logA(user.org,'-',null,user.name,user.role,'speakup',r.id,'updated',ch);return send(res,200,{row:view(db.prepare('SELECT * FROM speakup WHERE id=?').get(r.id))})}
+ return send(res,405,{error:'Method not allowed'})}
 function serveStatic(req,res,url){
  let rel=decodeURIComponent(url.pathname);if(rel==='/')rel='/index.html';
  const f=path.normalize(path.join(ROOT,rel));

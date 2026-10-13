@@ -54,7 +54,7 @@ function forceChange(current){
    const r=await call('POST','/api/password',{current,next:a});if(!r.ok){err.textContent=r.data.error||'Could not save.';return}
    d.remove();await goLive();done()}})}
 function signOut(expired){
- ss.del(TKEY);token=null;user=null;connected=false;if(es){es.close();es=null}document.body.classList.remove('gc-live');const bl=document.getElementById('gcBell');if(bl)bl.remove();paintPill();
+ ss.del(TKEY);token=null;user=null;connected=false;if(es){es.close();es=null}document.body.classList.remove('gc-live');const bl=document.getElementById('gcBell');if(bl)bl.remove();(G.connectHooks||[]).forEach(h=>{try{h()}catch{}});paintPill();
  if(expired){toast('Your session ended. Sign in again.')}
  showLogin(expired?'Your session ended. Please sign in again.':'')}
 
@@ -203,6 +203,7 @@ async function onDrawer(d){
 }
 const UIdrawerIs=d=>G.UI.drawer&&G.UI.drawer.id===d.id&&G.UI.drawer.type===d.type;
 G.drawerHooks.push(onDrawer);
+G.api={call:(m,u,b)=>call(m,u,b),get connected(){return connected},get user(){return user}};
 document.addEventListener('change',async e=>{if(e.target.id!=='gcUp'||!e.target.files[0])return;const f=e.target.files[0],d=G.UI.drawer;if(!d)return;
  if(f.size>10*1024*1024){toast('Files can be up to 10 MB.');return}
  const r=await fetch(`${API}/api/files?profile=${encodeURIComponent(PROF)}&ref=${encodeURIComponent(d.id)}&name=${encodeURIComponent(f.name)}`,{method:'POST',headers:{authorization:'Bearer '+token},body:f});
@@ -215,7 +216,7 @@ document.addEventListener('click',async e=>{const dl=e.target.closest('[data-gcf
 async function goLive(){
  connected=true;paintPill();bindIdentity();
  try{await pull()}catch(e){connected=false;paintPill();toast('Could not load shared data: '+e.message);return}
- mountTrail();mountUsers();mountBell();await syncPeople();loadNotes();startEvents();refreshTrail(true);G.renderAll();
+ mountTrail();mountUsers();mountBell();await syncPeople();loadNotes();startEvents();refreshTrail(true);G.renderAll();(G.connectHooks||[]).forEach(h=>{try{h()}catch(e){console.warn(e)}});
  toast(`Connected as ${user.name} (${user.role}). Changes are shared live.`);
 }
 pill.addEventListener('click',e=>{if(e.target.id==='gcOut')signOut(false);if(e.target.id==='gcPwd')G.openForm('Change password',[{name:'cur',label:'Current password',type:'password',full:true},{name:'n1',label:'New password',type:'password',full:true},{name:'n2',label:'Repeat new password',type:'password',full:true}],'Change',v=>{if(v.n1!==v.n2)return 'The new passwords do not match.';call('POST','/api/password',{current:v.cur,next:v.n1}).then(r=>toast(r.ok?'Password changed.':(r.data.error||'Could not change it.')))});if(e.target.id==='gcSignIn'){ss.del(DKEY);showLogin('')}});
