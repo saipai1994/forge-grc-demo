@@ -192,7 +192,7 @@ async function loadNotes(){try{const r=await call('GET','/api/notifications?prof
 function onNote(n){const mine=!n.who||n.who===user.name||user.role==='Administrator';if(!mine)return;notes.unshift({...n,seen:false});paintBell();paintNotes();if(n.who===user.name)toast(n.title)}
 
 // ---- files on records ----
-const FILE_TYPES=new Set(['issue','control','kri','loss','policy','vendor','evidence','finding','audit','riskrec','obligation','entity','dsr','breach','dpia','ropa','case']);
+const FILE_TYPES=new Set(['issue','control','kri','loss','policy','vendor','evidence','finding','audit','riskrec','obligation','entity','dsr','breach','dpia','ropa','case','wp','vq','evt','exc','coi','acc','plan']);
 async function onDrawer(d){
  if(!connected||!d||!FILE_TYPES.has(d.type))return;const body=document.getElementById('opDB');if(!body)return;
  let box=document.getElementById('gcFiles');if(!box){box=document.createElement('div');box.id='gcFiles';body.appendChild(box)}

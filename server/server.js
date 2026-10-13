@@ -5,6 +5,7 @@
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {DatabaseSync}=require('node:sqlite');
 const SYNC=require('../sync-core.js');
+const VQ=require('../vq-template.js');
 
 const PORT=+process.env.PORT||8080,ROOT=path.join(__dirname,'..'),DATA=process.env.FORGE_DATA||path.join(ROOT,'data');
 const INGEST_KEY=process.env.FORGE_INGEST_KEY||'dev-ingest-key';
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS notes(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT NO
 CREATE UNIQUE INDEX IF NOT EXISTS notes_dedupe ON notes(org,profile,dedupe) WHERE dedupe IS NOT NULL;
 CREATE TABLE IF NOT EXISTS note_read(user TEXT NOT NULL,note INTEGER NOT NULL,PRIMARY KEY(user,note));
 CREATE TABLE IF NOT EXISTS speakup(id TEXT PRIMARY KEY,org TEXT NOT NULL,ref TEXT UNIQUE NOT NULL,secret_hash TEXT NOT NULL,ts TEXT NOT NULL,category TEXT,body TEXT,contact TEXT,status TEXT NOT NULL,assignee TEXT,outcome TEXT,updates TEXT);
+CREATE TABLE IF NOT EXISTS vq_tokens(token_hash TEXT PRIMARY KEY,org TEXT NOT NULL,profile TEXT NOT NULL,vq_id TEXT NOT NULL,vendor_id TEXT NOT NULL,expires TEXT NOT NULL,created TEXT NOT NULL,used INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS files(id TEXT PRIMARY KEY,org TEXT NOT NULL,profile TEXT NOT NULL,ref TEXT NOT NULL,name TEXT NOT NULL,size INTEGER,type TEXT,by TEXT,ts TEXT,sha TEXT);`);
 try{db.exec('ALTER TABLE users ADD COLUMN must_change INTEGER DEFAULT 0')}catch{}
 
@@ -127,16 +129,17 @@ function applyOps(org,profile,user,ops,source){
  return{rev:applied.length?rev:doc.rev,applied,denied,renames,seq:st.seq};
 }
 // Approval decisions can only be made by the named approver or an administrator, never by the requester.
-const APPR_LABEL={acc:'Risk acceptance',plans:'Treatment plan',exc:'Policy exception',coi:'Declaration'};
+const APPR_LABEL={'audit.wp':'Workpaper',acc:'Risk acceptance',plans:'Treatment plan',exc:'Policy exception',coi:'Declaration'};
 const APPROVALS={
  acc:{init:'Pending',from:['Pending'],to:['Active','Rejected'],revoke:'Revoked',who:'requestedBy'},
  plans:{init:'Draft',from:['Pending approval'],to:['Approved','Rejected'],who:'owner'},
  exc:{init:'Pending',from:['Pending'],to:['Approved','Rejected'],who:'requestedBy',approver:'approver'},
+ 'audit.wp':{init:'Draft',from:['Ready for review'],to:['Reviewed'],who:'preparer',approver:'reviewer'},
  coi:{init:'Declared',from:['Declared','Under review'],to:['Cleared','Mitigated','Declined'],who:'person',approver:'reviewer'}};
 function approvalGate(st,op,user){
- const c=op.p.length===1&&APPROVALS[op.p[0]];if(!c||op.op==='set')return false;
+ const c=APPROVALS[op.p.join('.')];if(!c||op.op==='set')return false;
  if(op.op==='del')return user.role!=='Administrator';
- if(op.op!=='put')return false;const arr=st[op.p[0]],ex=Array.isArray(arr)&&arr.find(x=>x.id===op.id),isAdmin=user.role==='Administrator';
+ if(op.op!=='put')return false;const arr=SYNC_get(st,op.p),ex=Array.isArray(arr)&&arr.find(x=>x.id===op.id),isAdmin=user.role==='Administrator';
  if(!ex){if(!Array.isArray(arr))return false;return !isAdmin&&op.rec.status!==c.init}
  if(ex.status===op.rec.status)return false;
  if(c.to.includes(op.rec.status)){const ap=ex[c.approver||'approver'];return !(c.from.includes(ex.status)&&(isAdmin||user.name===ap)&&user.name!==ex[c.who])}
@@ -195,6 +198,7 @@ async function api(req,res,url){
   const b=await readBody(req),profile=b.profile||'manufacturing';if(!okProfile(profile))return send(res,400,{error:'Bad profile'});
   const r=ingestKri(b.org||'demo',profile,b);return send(res,r.status,r);
  }
+ if(p==='/api/vq/form'||p==='/api/vq/save'||p==='/api/vq/submit')return vqPublic(req,res,url,p);
  if(p==='/api/speakup'&&req.method==='POST')return speakupSubmit(req,res);
  if(p==='/api/speakup/status'&&req.method==='GET')return speakupStatus(url,res);
  if(p==='/api/speakup/reply'&&req.method==='POST')return speakupReply(req,res);
@@ -232,6 +236,7 @@ async function api(req,res,url){
     broadcast(user.org,'*',{type:'people'});return send(res,200,{ok:true})}}
   return send(res,404,{error:'Not found'});
  }
+ if(p==='/api/vq/issue'&&req.method==='POST')return vqIssue(req,res,user);
  if(p.startsWith('/api/speakup'))return speakupStaff(req,res,url,p,user);
  if(p==='/api/notifications'&&req.method==='GET'){
   const rows=db.prepare('SELECT n.*,(SELECT 1 FROM note_read r WHERE r.user=? AND r.note=n.id) AS seen FROM notes n WHERE n.org=? AND (n.profile=? OR n.profile=\'*\') AND (n.who IS NULL OR n.who=? OR ?=\'Administrator\') ORDER BY n.id DESC LIMIT 100').all(user.id,user.org,profile,user.name,user.role);
@@ -325,6 +330,35 @@ async function speakupStaff(req,res,url,p,user){
   db.prepare('UPDATE speakup SET status=?,assignee=?,outcome=?,updates=? WHERE id=?').run(status,assignee,outcome,JSON.stringify(up),r.id);
   if(ch.length)logA(user.org,'-',null,user.name,user.role,'speakup',r.id,'updated',ch);return send(res,200,{row:view(db.prepare('SELECT * FROM speakup WHERE id=?').get(r.id))})}
  return send(res,405,{error:'Method not allowed'})}
+// ---- vendor questionnaire portal: a vendor answers through a private link, no account needed
+const vqRate=new Map();
+function vqFind(token){if(!token||String(token).length<20)return null;const r=db.prepare('SELECT * FROM vq_tokens WHERE token_hash=?').get(shaS(token));if(!r||r.expires<new Date().toISOString().slice(0,10))return null;return r}
+async function vqIssue(req,res,user){
+ if(user.role==='Auditor')return send(res,403,{error:'Not permitted'});
+ const b=await readBody(req);if(!okProfile(b.profile))return send(res,400,{error:'Bad profile'});
+ const doc=getDoc(user.org,b.profile);const rec=doc&&(doc.state.vq||[]).find(x=>x.id===b.vq);if(!rec)return send(res,404,{error:'Create the questionnaire request first.'});
+ db.prepare('DELETE FROM vq_tokens WHERE org=? AND profile=? AND vq_id=?').run(user.org,b.profile,rec.id);
+ const token=crypto.randomBytes(24).toString('base64url'),days=Math.min(Math.max(+b.days||30,3),90),exp=new Date(Date.now()+days*864e5).toISOString().slice(0,10);
+ db.prepare('INSERT INTO vq_tokens VALUES(?,?,?,?,?,?,?,0)').run(shaS(token),user.org,b.profile,rec.id,rec.vendor,exp,new Date().toISOString());
+ logA(user.org,b.profile,null,user.name,user.role,'vq',rec.id,'link issued',{vendor:rec.vendor,expires:exp});
+ return send(res,200,{token,url:'/vendor.html?t='+token,expires:exp})}
+async function vqPublic(req,res,url,p){
+ const ip=req.socket.remoteAddress||'?',k=shaS(ip+'|'+Math.floor(Date.now()/3600e3)),n=(vqRate.get(k)||0)+1;vqRate.set(k,n);if(vqRate.size>5000)vqRate.clear();if(n>200)return send(res,429,{error:'Too many requests. Try again later.'});
+ let b={};if(req.method==='POST'){try{b=await readBody(req)}catch{return send(res,400,{error:'Bad request'})}}
+ const t=vqFind(req.method==='POST'?b.t:url.searchParams.get('t'));if(!t)return send(res,404,{error:'This link is not valid or has expired. Ask the person who sent it for a new one.'});
+ const doc=getDoc(t.org,t.profile);if(!doc)return send(res,404,{error:'Not found'});const rec=(doc.state.vq||[]).find(x=>x.id===t.vq_id);if(!rec)return send(res,404,{error:'Not found'});
+ const vendor=(doc.state.vendors||[]).find(v=>v.id===t.vendor_id)||{name:'your organisation'};
+ const sys={role:'Administrator',label:'Vendor portal',name:'Vendor: '+vendor.name};
+ if(p==='/api/vq/form')return send(res,200,{vq:{id:rec.id,status:rec.status,answers:rec.answers||{},due:rec.due,signer:rec.signer||''},vendor:{name:vendor.name},requestedBy:rec.requestedBy,template:{title:VQ.title,sections:VQ.sections},locked:['Submitted','Reviewed'].includes(rec.status)});
+ if(['Submitted','Reviewed'].includes(rec.status))return send(res,409,{error:'This questionnaire has already been submitted.'});
+ const clean={};for(const q of VQ.questions()){const a=b.answers&&b.answers[q.id];if(a&&['Yes','Partial','No','N/A'].includes(a.a))clean[q.id]={a:a.a,c:String(a.c||'').slice(0,600)}}
+ if(p==='/api/vq/save'){const r=applyOps(t.org,t.profile,sys,[{op:'put',p:['vq'],id:rec.id,at:0,ch:['answers','status'],rec:{...rec,answers:clean,status:'In progress'}}],'portal');return send(res,200,{ok:true,saved:Object.keys(clean).length})}
+ const sc=VQ.score(clean);if(!sc.complete)return send(res,400,{error:`Please answer all ${sc.total} questions (${sc.answered} answered).`});
+ const signer=String(b.signer||'').trim().slice(0,120);if(signer.length<2)return send(res,400,{error:'Enter the name and role of the person submitting.'});
+ applyOps(t.org,t.profile,sys,[{op:'put',p:['vq'],id:rec.id,at:0,ch:['answers','status','signer','submitted','score','flags'],rec:{...rec,answers:clean,status:'Submitted',signer,submitted:new Date().toISOString().slice(0,10),score:sc.score,flags:sc.flags}}],'portal');
+ db.prepare('UPDATE vq_tokens SET used=1 WHERE token_hash=?').run(t.token_hash);
+ if(rec.requestedBy)note(t.org,t.profile,{kind:'approval',title:`${vendor.name} submitted their questionnaire`,body:`${rec.id} · score ${sc.score}%${sc.flags.length?' · '+sc.flags.length+' critical gap(s)':''}`,ref:rec.id,who:rec.requestedBy});
+ return send(res,200,{ok:true,message:'Thank you. Your answers have been submitted.'})}
 function serveStatic(req,res,url){
  let rel=decodeURIComponent(url.pathname);if(rel==='/')rel='/index.html';
  const f=path.normalize(path.join(ROOT,rel));

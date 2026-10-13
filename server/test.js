@@ -63,5 +63,18 @@ const SYNC=require('../sync-core.js'),{server,db}=require('./server.js');
  await J('PATCH','/api/speakup/'+sid,{note:'Thank you, we are looking into this.',public:true},aud);
  const stt=(await J('GET','/api/speakup/status?ref='+su.j.ref+'&secret='+su.j.secret,null,{})).j;assert.equal(stt.status,'Investigating','reporter sees status');assert(stt.updates.some(u=>/looking into/.test(u.text))&&!stt.updates.some(u=>/Interviewed/.test(u.text)),'reporter sees public replies only');
  assert.equal((await J('POST','/api/speakup/reply',{ref:su.j.ref,secret:su.j.secret,text:'Here is more detail.'},{})).s,200,'reporter can add information');
+ // vendor questionnaire portal
+ await J('POST','/api/init',{profile:'vp',state:{v:1,seq:{},vendors:[{id:'V-1',name:'Acme Cloud'}],vq:[{id:'VQ-1',vendor:'V-1',status:'Sent',requestedBy:'Evan Brooks',answers:{},due:'2026-12-01'}]}},adm);
+ assert.equal((await J('POST','/api/vq/issue',{profile:'vp',vq:'VQ-9'},adm)).s,404,'cannot issue a link for a missing request');
+ assert.equal((await J('POST','/api/vq/issue',{profile:'vp',vq:'VQ-1'},aud)).s,403,'auditor cannot issue links');
+ const tk=(await J('POST','/api/vq/issue',{profile:'vp',vq:'VQ-1'},adm)).j.token;assert(tk&&tk.length>=30,'link issued');
+ assert.equal((await J('GET','/api/vq/form?t=nope',null,{})).s,404,'bad token refused');
+ const frm=(await J('GET','/api/vq/form?t='+tk,null,{})).j;assert(frm.vendor.name==='Acme Cloud'&&frm.template.sections.length===5,'portal form served without sign-in');
+ const VQT=require('../vq-template.js'),good={};VQT.questions().forEach(q=>good[q.id]={a:'Yes',c:''});
+ assert.equal((await J('POST','/api/vq/submit',{t:tk,answers:{g1:{a:'Yes'}},signer:'X Y'},{})).s,400,'incomplete submission refused');
+ assert.equal((await J('POST','/api/vq/submit',{t:tk,answers:good,signer:''},{})).s,400,'signer required');
+ assert.equal((await J('POST','/api/vq/submit',{t:tk,answers:good,signer:'A B, CISO'},{})).s,200,'complete submission accepted');
+ const vqrec=(await J('GET','/api/state?profile=vp',null,adm)).j.state.vq[0];assert(vqrec.status==='Submitted'&&vqrec.score===100,'score computed on the server');
+ assert.equal((await J('POST','/api/vq/save',{t:tk,answers:good},{})).s,409,'cannot change after submit');
  console.log('All checks passed');server.close();db.close();process.exit(0);
 })().catch(e=>{console.error('FAILED:',e.message);process.exit(1)});

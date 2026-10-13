@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Vendor questionnaire</title>
+<style>
+:root{--ink:#1D2D3E;--sub:#556B82;--line:#D9D9D9;--brand:#0070F2;--bg:#F5F6F7;--bad:#AA0808;--good:#256F3A}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "72","Segoe UI",Arial,sans-serif}
+main{max-width:760px;margin:0 auto;padding:28px 16px 80px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:18px;margin:26px 0 8px;color:#0064D9}p{margin:0 0 12px;color:var(--sub)}
+.card{background:#fff;border-radius:16px;box-shadow:0 0 2px #00000026,0 2px 4px #0000001f;padding:18px 20px;margin-bottom:14px}
+.q{padding:14px 0;border-bottom:1px solid #EDEFF1}.q:last-child{border-bottom:0}
+.q p{color:var(--ink);margin:0 0 8px;font-weight:600;font-size:15px}
+.opts{display:flex;gap:8px;flex-wrap:wrap}
+.opts label{display:flex;gap:6px;align-items:center;border:1px solid #BCC3CA;border-radius:18px;padding:6px 14px;cursor:pointer;font-size:14px;background:#fff}
+.opts input{margin:0}.opts label:has(input:checked){background:#EBF5FE;border-color:var(--brand);font-weight:700}
+input[type=text],textarea{width:100%;font:inherit;padding:9px 11px;border:1px solid #BCC3CA;border-radius:8px;margin-top:8px}
+textarea{min-height:60px}
+button{font:inherit;font-weight:700;border:0;border-radius:8px;background:var(--brand);color:#fff;padding:11px 20px;cursor:pointer}
+button.alt{background:#fff;color:var(--brand);border:1px solid var(--brand)}
+:focus-visible{outline:3px solid #0070F2;outline-offset:2px}
+.bar{position:sticky;bottom:0;background:#fffffff2;border-top:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.msg{font-weight:600}.err{color:var(--bad)}.ok{color:var(--good)}
+.prog{height:8px;background:#EEF1F4;border-radius:4px;overflow:hidden;margin:10px 0 4px}.prog i{display:block;height:100%;background:var(--brand);width:0}
+</style>
+</head>
+<body>
+<main id="m"><p>Loading…</p></main>
+<script>
+const q=new URLSearchParams(location.search),T=q.get('t'),API=(q.get('server')||location.origin).replace(/\/$/,'');
+const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let F=null,A={};
+async function api(path,body){const r=await fetch(API+path,body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...body,t:T}),referrerPolicy:'no-referrer'}:{referrerPolicy:'no-referrer'});return{ok:r.ok,j:await r.json().catch(()=>({}))}}
+(async()=>{
+ if(!T){$('m').innerHTML='<h1>Vendor questionnaire</h1><p>This page needs the private link you were sent.</p>';return}
+ const r=await api('/api/vq/form?t='+encodeURIComponent(T));
+ if(!r.ok){$('m').innerHTML=`<h1>Vendor questionnaire</h1><p class="err">${esc(r.j.error||'This link is not valid.')}</p>`;return}
+ F=r.j;A=F.vq.answers||{};draw()})();
+function total(){return F.template.sections.reduce((n,s)=>n+s.qs.length,0)}
+function draw(){
+ const locked=F.locked;
+ $('m').innerHTML=`<h1>${esc(F.template.title)}</h1><p>Prepared for <b>${esc(F.vendor.name)}</b>${F.requestedBy?' by '+esc(F.requestedBy):''}${F.vq.due?'. Please reply by '+esc(F.vq.due):''}. Answer every question. Use the comment box to explain or point to evidence. You can save and come back using the same link.</p>
+ ${locked?'<div class="card"><b class="ok">This questionnaire has been submitted. Thank you.</b></div>':''}
+ <div class="prog" aria-hidden="true"><i id="pb"></i></div><p id="pt" style="font-size:13px"></p>
+ ${F.template.sections.map(s=>`<h2>${esc(s.title)}</h2><div class="card">${s.qs.map(x=>`<div class="q"><p id="l-${x.id}">${esc(x.q)}</p><div class="opts" role="radiogroup" aria-labelledby="l-${x.id}">${['Yes','Partial','No','N/A'].map(o=>`<label><input type="radio" name="${x.id}" value="${o}"${(A[x.id]&&A[x.id].a)===o?' checked':''}${locked?' disabled':''}>${o}</label>`).join('')}</div><textarea data-c="${x.id}" placeholder="Comment or evidence (optional)" maxlength="600"${locked?' disabled':''}>${esc((A[x.id]&&A[x.id].c)||'')}</textarea></div>`).join('')}</div>`).join('')}
+ ${locked?'':`<div class="card"><label for="sg"><b>Submitted by</b> (name and role)</label><input type="text" id="sg" value="${esc(F.vq.signer||'')}" maxlength="120"></div>
+ <div class="bar"><span class="msg" id="msg" role="status"></span><span><button type="button" class="alt" id="sv">Save draft</button> <button type="button" id="sb">Submit</button></span></div>`}`;
+ if(!locked){document.querySelectorAll('input[type=radio]').forEach(i=>i.onchange=()=>{A[i.name]=Object.assign(A[i.name]||{},{a:i.value});prog()});document.querySelectorAll('textarea[data-c]').forEach(t=>t.oninput=()=>{A[t.dataset.c]=Object.assign(A[t.dataset.c]||{a:''},{c:t.value})});
+  $('sv').onclick=()=>send(false);$('sb').onclick=()=>send(true)}
+ prog()}
+function prog(){const n=Object.values(A).filter(x=>x&&x.a).length,t=total();$('pb').style.width=Math.round(n/t*100)+'%';$('pt').textContent=`${n} of ${t} answered`}
+async function send(sub){const m=$('msg');m.className='msg';m.textContent='';
+ const body={answers:A};if(sub){body.signer=$('sg').value;const n=Object.values(A).filter(x=>x&&x.a).length;if(n<total()){m.className='msg err';m.textContent=`Please answer all ${total()} questions (${n} answered).`;return}if(!confirm('Submit your answers? You will not be able to change them afterwards.'))return}
+ const r=await api(sub?'/api/vq/submit':'/api/vq/save',body);
+ if(!r.ok){m.className='msg err';m.textContent=r.j.error||'Could not save.';return}
+ if(sub){F.locked=true;draw();window.scrollTo(0,0)}else{m.className='msg ok';m.textContent='Draft saved.'}}
+</script>
+</body>
+</html>
