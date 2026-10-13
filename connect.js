@@ -28,7 +28,7 @@ const pill=document.createElement('div');pill.id='gcPill';
 pill.style.cssText='display:inline-flex;align-items:center;gap:7px;font:600 10px "DM Sans",sans-serif;padding:5px 10px;border:1px solid #d6dde5;border-radius:14px;background:#fff;color:#44566a;cursor:default;margin-right:8px';
 function paintPill(){
  if(!connected){pill.innerHTML=`<i style="width:7px;height:7px;border-radius:50%;background:#c9a13b;display:inline-block"></i>Demo mode · this browser only <button id="gcSignIn" style="border:0;background:none;color:#17766A;font:600 10px 'DM Sans';cursor:pointer">Sign in</button>`;return}
- pill.innerHTML=`<i id="gcDot" style="width:7px;height:7px;border-radius:50%;background:#2e9d6f;display:inline-block"></i>Live · ${E(user.name)} · ${E(user.role)} <button id="gcPwd" style="border:0;background:none;color:#17766A;font:600 10px 'DM Sans';cursor:pointer">Password</button><button id="gcOut" style="border:0;background:none;color:#8a4a45;font:600 10px 'DM Sans';cursor:pointer">Sign out</button>`}
+ pill.innerHTML=`<i id="gcDot" style="width:7px;height:7px;border-radius:50%;background:#2e9d6f;display:inline-block"></i>Live · ${E(user.name)} · ${E(user.role)} <button id="gcMfa" style="border:0;background:none;color:#17766A;font:600 10px 'DM Sans';cursor:pointer">Two-step</button><button id="gcPwd" style="border:0;background:none;color:#17766A;font:600 10px 'DM Sans';cursor:pointer">Password</button><button id="gcOut" style="border:0;background:none;color:#8a4a45;font:600 10px 'DM Sans';cursor:pointer">Sign out</button>`}
 function mountPill(){const bar=document.querySelector('.top-actions');if(bar&&!pill.parentNode)bar.prepend(pill)}
 const css=document.createElement('style');css.textContent='.gc-live .demo-user-label{display:none!important}@keyframes gcpulse{0%{box-shadow:0 0 0 0 #2e9d6f88}100%{box-shadow:0 0 0 9px #2e9d6f00}}.gcflash{animation:gcpulse .9s}#gcLogin{position:fixed;inset:0;background:#0F1B2Bf0;z-index:99998;display:flex;align-items:center;justify-content:center;padding:18px}#gcLogin form{background:#fff;border-radius:14px;padding:28px;width:min(400px,100%);box-shadow:0 30px 80px #0006;font-family:"DM Sans",sans-serif}#gcLogin h2{font:800 20px Manrope,sans-serif;margin:0 0 4px;color:#14202E}#gcLogin p{font-size:12px;color:#5b6b7c;margin:0 0 16px;line-height:1.5}#gcLogin label{display:block;font:600 11px "DM Sans";color:#344558;margin:10px 0 4px}#gcLogin input{width:100%;box-sizing:border-box;padding:10px 11px;border:1px solid #cfd8e1;border-radius:8px;font-size:13px}#gcLogin .go{width:100%;margin-top:16px;padding:11px;border:0;border-radius:8px;background:#17766A;color:#fff;font:700 13px "DM Sans";cursor:pointer}#gcLogin .alt{display:block;margin:12px auto 0;border:0;background:none;color:#5b6b7c;font:600 11px "DM Sans";cursor:pointer;text-decoration:underline}#gcLogin .err{color:#b3392f;font-size:12px;margin-top:10px;min-height:16px}#gcLogin .hint{margin-top:14px;padding:9px 10px;background:#f3f6f9;border-radius:8px;font-size:10.5px;color:#5b6b7c;line-height:1.5}';document.head.appendChild(css);
 
@@ -36,14 +36,44 @@ const css=document.createElement('style');css.textContent='.gc-live .demo-user-l
 function showLogin(msg){
  if(document.getElementById('gcLogin'))return;
  const d=document.createElement('div');d.id='gcLogin';
- d.innerHTML=`<form autocomplete="on"><h2>Sign in to Forge GRC</h2><p>Your workspace is shared with your team. Every change is recorded in the audit trail.</p><label for="gcEmail">Email</label><input id="gcEmail" type="email" autocomplete="username" required><label for="gcPw">Password</label><input id="gcPw" type="password" autocomplete="current-password" required><div class="err" id="gcErr">${E(msg||'')}</div><button class="go" type="submit">Sign in</button><button type="button" class="alt" id="gcDemo">Continue in demo mode (this browser only)</button>${health&&health.hint?`<div class="hint">${E(health.hint)}</div>`:''}</form>`;
+ d.innerHTML=`<form autocomplete="on"><h2>Sign in to Forge GRC</h2><p>Your workspace is shared with your team. Every change is recorded in the audit trail.</p><label for="gcEmail">Email</label><input id="gcEmail" type="email" autocomplete="username" required><label for="gcPw">Password</label><input id="gcPw" type="password" autocomplete="current-password" required><div class="err" id="gcErr">${E(msg||'')}</div><button class="go" type="submit">Sign in</button>${health&&health.oidc?'<button type="button" class="go" id="gcSso" style="background:#0a4f9e">Sign in with your company account</button>':''}<button type="button" class="alt" id="gcDemo">Continue in demo mode (this browser only)</button>${health&&health.hint?`<div class="hint">${E(health.hint)}</div>`:''}</form>`;
  document.body.appendChild(d);d.querySelector('#gcEmail').focus();
  d.querySelector('form').onsubmit=async e=>{e.preventDefault();const err=d.querySelector('#gcErr');err.textContent='';
   try{const r=await call('POST','/api/login',{email:d.querySelector('#gcEmail').value,password:d.querySelector('#gcPw').value});
    if(!r.ok){err.textContent=r.data.error||'Sign in failed.';return}
-   token=r.data.token;ss.set(TKEY,token);user=r.data.user;ss.del(DKEY);d.remove();if(r.data.mustChange){await forceChange(d.querySelector('#gcPw').value)}else await goLive()}catch(x){err.textContent='Could not reach the server.'}};
+   if(r.data.mfa){const pw=d.querySelector('#gcPw').value;d.remove();await askCode(r.data.ticket,pw);return}
+   const pw=d.querySelector('#gcPw').value;await afterLogin(r.data,pw,d)}catch(x){err.textContent='Could not reach the server.'}};
+ const sso=d.querySelector('#gcSso');if(sso)sso.onclick=()=>{location.href=API+'/api/oidc/login'};
+ if(health&&health.localLogin===false){d.querySelectorAll('#gcEmail,#gcPw,label,button.go[type=submit]').forEach(x=>{x.style.display='none'});d.querySelector('#gcEmail').required=false;d.querySelector('#gcPw').required=false}
  d.querySelector('#gcDemo').onclick=()=>{ss.set(DKEY,'1');d.remove();paintPill()};
 }
+async function afterLogin(data,pw,d){
+ token=data.token;ss.set(TKEY,token);user=data.user;ss.del(DKEY);if(d)d.remove();
+ const me=await call('GET','/api/me');
+ if(data.mustChange||(me.ok&&me.data.mustChange)){await forceChange(pw)}
+ if(me.ok&&me.data.mustMfa){await forceMfa()}
+ await goLive()}
+function askCode(ticket,pw,msg){
+ return new Promise(done=>{
+  const d=document.createElement('div');d.id='gcLogin';
+  d.innerHTML=`<form><h2>Two-step sign-in</h2><p>Open your authenticator app and enter the 6-digit code for Forge GRC. Lost your phone? Enter one of your recovery codes instead.</p><label for="gcCode">Code</label><input id="gcCode" inputmode="numeric" autocomplete="one-time-code" required><div class="err" id="gcErr">${E(msg||'')}</div><button class="go" type="submit">Verify</button><button type="button" class="alt" id="gcBack">Back</button></form>`;
+  document.body.appendChild(d);d.querySelector('#gcCode').focus();
+  d.querySelector('#gcBack').onclick=()=>{d.remove();showLogin('');done()};
+  d.querySelector('form').onsubmit=async e=>{e.preventDefault();const err=d.querySelector('#gcErr');err.textContent='';
+   const r=await call('POST','/api/login/mfa',{ticket,code:d.querySelector('#gcCode').value});if(!r.ok){err.textContent=r.data.error||'That code is not correct.';if(r.status===401&&/expired|Start again/.test(r.data.error||'')){d.remove();showLogin(r.data.error);done()}return}
+   await afterLogin(r.data,pw,d);done()}})}
+function mfaSetupBox(forced){
+ return new Promise(async done=>{
+  const r=await call('POST','/api/mfa/setup',{});if(!r.ok){toast(r.data.error||'Could not start setup.');done();return}
+  const d=document.createElement('div');d.id='gcLogin';
+  d.innerHTML=`<form><h2>Turn on two-step sign-in</h2><p>1. In an authenticator app (Microsoft Authenticator, Google Authenticator, 1Password, Authy), add an account by entering this key:</p><div style="font:700 15px 'DM Mono',monospace;letter-spacing:1px;background:#f3f6f9;border-radius:8px;padding:10px;word-break:break-all;user-select:all">${E(r.data.secret)}</div><p style="margin-top:8px;font-size:11px">Or open this link on your phone: <a href="${E(r.data.uri)}" style="color:#0064D9">add to authenticator</a></p><p>2. Enter the 6-digit code it shows:</p><input id="gcCode" inputmode="numeric" autocomplete="one-time-code" required><div class="err" id="gcErr"></div><button class="go" type="submit">Turn on</button>${forced?'':'<button type="button" class="alt" id="gcBack">Cancel</button>'}</form>`;
+  document.body.appendChild(d);d.querySelector('#gcCode').focus();
+  const b=d.querySelector('#gcBack');if(b)b.onclick=()=>{d.remove();done()};
+  d.querySelector('form').onsubmit=async e=>{e.preventDefault();const err=d.querySelector('#gcErr');err.textContent='';
+   const q=await call('POST','/api/mfa/enable',{code:d.querySelector('#gcCode').value});if(!q.ok){err.textContent=q.data.error||'That code is not correct.';return}
+   d.innerHTML=`<form><h2>Save your recovery codes</h2><p>If you lose your phone, each of these codes lets you sign in once. Store them somewhere safe. They are shown only now.</p><div style="font:700 14px 'DM Mono',monospace;columns:2;background:#f3f6f9;border-radius:8px;padding:12px;user-select:all">${q.data.recovery.map(c=>E(c)).join('<br>')}</div><button class="go" type="button" id="gcDone">I have saved them</button></form>`;
+   d.querySelector('#gcDone').onclick=()=>{d.remove();done()}}})}
+const forceMfa=()=>mfaSetupBox(true);
 function forceChange(current){
  return new Promise(done=>{
   const d=document.createElement('div');d.id='gcLogin';
@@ -54,7 +84,7 @@ function forceChange(current){
    const r=await call('POST','/api/password',{current,next:a});if(!r.ok){err.textContent=r.data.error||'Could not save.';return}
    d.remove();await goLive();done()}})}
 function signOut(expired){
- ss.del(TKEY);token=null;user=null;connected=false;if(es){es.close();es=null}document.body.classList.remove('gc-live');const bl=document.getElementById('gcBell');if(bl)bl.remove();paintPill();
+ ss.del(TKEY);token=null;user=null;connected=false;if(es){es.close();es=null}document.body.classList.remove('gc-live');const bl=document.getElementById('gcBell');if(bl)bl.remove();(G.connectHooks||[]).forEach(h=>{try{h()}catch{}});paintPill();
  if(expired){toast('Your session ended. Sign in again.')}
  showLogin(expired?'Your session ended. Please sign in again.':'')}
 
@@ -164,6 +194,7 @@ function mountUsers(){
    call('POST','/api/users',v).then(r=>{if(!r.ok){toast(r.data.error||'Could not create the account.');return}loadUsers();syncPeople();setTimeout(()=>G.openForm('Account created',[{name:'tp',label:`Temporary password for ${v.name} (shown once; they must change it at first sign-in)`,value:r.data.tempPassword,full:true}],'Done',()=>{}),0)})}),
   'u-role':b=>{if(b.value===b.dataset.cur)return;call('PATCH','/api/users/'+b.dataset.id,{role:b.value}).then(r=>{toast(r.ok?'Role updated.':(r.data.error||'Could not update.'));loadUsers();syncPeople()})},
   'u-active':b=>{call('PATCH','/api/users/'+b.dataset.id,{active:b.dataset.on==='1'}).then(r=>{toast(r.ok?(b.dataset.on==='1'?'Account switched on.':'Account switched off.'):(r.data.error||'Could not update.'));loadUsers();syncPeople()})},
+  'u-mfa':b=>{if(!confirm('Reset this person\'s two-step sign-in? They will set it up again.'))return;call('POST','/api/users/'+b.dataset.id+'/mfa-reset').then(r=>toast(r.ok?'Two-step reset.':(r.data.error||'Could not reset.')))},
   'u-reset':b=>{if(!confirm('Reset this person\'s password?'))return;call('POST','/api/users/'+b.dataset.id+'/reset').then(r=>{if(!r.ok){toast(r.data.error||'Could not reset.');return}G.openForm('Password reset',[{name:'tp',label:'New temporary password (shown once)',value:r.data.tempPassword,full:true}],'Done',()=>{})})}
  });
  document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.op==='u-role')G.actions['u-role'](t)});
@@ -173,7 +204,7 @@ async function loadUsers(){try{const r=await call('GET','/api/users');if(r.ok){u
 function renderUsers(){
  const pn=G.panel('users','list');if(!pn)return;G.head('users','<button class="btn primary" data-op="u-new"><span class="btnico">＋</span>Invite person</button>');
  const roles=['Administrator','Business user','Function user','Auditor'];
- const rows=userRows.map(u=>`<tr style="cursor:default"><td><div class="riskname">${E(u.name)}</div><div class="riskarea">${E(u.email)}</div></td><td><select class="select" data-op="u-role" data-id="${E(u.id)}" data-cur="${E(u.role)}">${roles.map(r=>`<option${r===u.role?' selected':''}>${r}</option>`).join('')}</select></td><td>${G.pill(u.active?(u.must_change?'Invited':'Active'):'Off',u.active?(u.must_change?'amber':'green'):'red')}</td><td><button class="op-mini" data-op="u-reset" data-id="${E(u.id)}">Reset password</button> <button class="op-mini" data-op="u-active" data-id="${E(u.id)}" data-on="${u.active?0:1}">${u.active?'Switch off':'Switch on'}</button></td></tr>`);
+ const rows=userRows.map(u=>`<tr style="cursor:default"><td><div class="riskname">${E(u.name)}</div><div class="riskarea">${E(u.email)}</div></td><td><select class="select" data-op="u-role" data-id="${E(u.id)}" data-cur="${E(u.role)}">${roles.map(r=>`<option${r===u.role?' selected':''}>${r}</option>`).join('')}</select></td><td>${G.pill(u.active?(u.must_change?'Invited':'Active'):'Off',u.active?(u.must_change?'amber':'green'):'red')}</td><td><button class="op-mini" data-op="u-reset" data-id="${E(u.id)}">Reset password</button> <button class="op-mini" data-op="u-mfa" data-id="${E(u.id)}">Reset two-step</button> <button class="op-mini" data-op="u-active" data-id="${E(u.id)}" data-on="${u.active?0:1}">${u.active?'Switch off':'Switch on'}</button></td></tr>`);
  pn.innerHTML=G.card('People',`${userRows.length} account(s). Names identify record owners, so use each person's full name.`,G.table(['Person','Role','Status','Actions'],rows,'No accounts yet.'));
 }
 
@@ -187,12 +218,12 @@ function mountBell(){const bar=document.querySelector('.top-actions');if(!bar||d
  document.addEventListener('click',e=>{if(bell&&!bell.contains(e.target))bell.querySelector('#gcBellBox').style.display='none'});
  bell.addEventListener('click',e=>{const it=e.target.closest('[data-ref]');if(it){const ref=it.dataset.ref,l=G.lk(ref),m=/data-t="(\w+)"/.exec(l);bell.querySelector('#gcBellBox').style.display='none';if(m)G.openDrawer(m[1],ref);else if(G.risks.find(r=>r.id===ref))G.openDrawer('riskrec',ref)}})}
 function paintBell(){const n=notes.filter(x=>!x.seen).length,el=document.getElementById('gcBellN');if(el)el.textContent=n?String(n):''}
-function paintNotes(){const box=document.getElementById('gcBellBox');if(!box)return;box.innerHTML=`<div style="padding:10px 14px;border-bottom:1px solid #edf0f3;font:700 12px Manrope">Notifications</div>`+(notes.length?notes.map(n=>`<div ${n.ref?`data-ref="${E(n.ref)}"`:''} style="padding:10px 14px;border-bottom:1px solid #f1f4f7;cursor:${n.ref?'pointer':'default'};${n.seen?'':'background:#f4faf8'}"><div style="font:600 11.5px 'DM Sans';color:#26384c">${E(n.title)}</div><div style="font-size:10.5px;color:#6b7888;line-height:1.5">${E(n.body||'')}</div><div style="font-size:9.5px;color:#9aa6b2;margin-top:3px">${E(new Date(n.ts).toLocaleString())}${n.email?' · email: '+E(n.email):''}</div></div>`).join(''):'<div style="padding:18px;font-size:11px;color:#8a95a3">Nothing yet.</div>')}
+function paintNotes(){const box=document.getElementById('gcBellBox');if(!box)return;box.innerHTML=`<div style="padding:10px 14px;border-bottom:1px solid #edf0f3;font:700 12px Manrope">Notifications</div>`+(notes.length?notes.map(n=>`<div ${n.ref?`data-ref="${E(n.ref)}"`:''} style="padding:10px 14px;border-bottom:1px solid #f1f4f7;cursor:${n.ref?'pointer':'default'};${n.seen?'':'background:#f4faf8'}"><div style="font:600 11.5px 'DM Sans';color:#26384c">${E(n.title)}</div><div style="font-size:10.5px;color:#63707f;line-height:1.5">${E(n.body||'')}</div><div style="font-size:9.5px;color:#69737b;margin-top:3px">${E(new Date(n.ts).toLocaleString())}${n.email?' · email: '+E(n.email):''}</div></div>`).join(''):'<div style="padding:18px;font-size:11px;color:#69717d">Nothing yet.</div>')}
 async function loadNotes(){try{const r=await call('GET','/api/notifications?profile='+encodeURIComponent(PROF));if(r.ok){notes=r.data.rows;paintBell();paintNotes()}}catch{}}
 function onNote(n){const mine=!n.who||n.who===user.name||user.role==='Administrator';if(!mine)return;notes.unshift({...n,seen:false});paintBell();paintNotes();if(n.who===user.name)toast(n.title)}
 
 // ---- files on records ----
-const FILE_TYPES=new Set(['issue','control','kri','loss','policy','vendor','evidence','finding','audit','riskrec','obligation','entity','dsr','breach','dpia','ropa','case']);
+const FILE_TYPES=new Set(['issue','control','kri','loss','policy','vendor','evidence','finding','audit','riskrec','obligation','entity','dsr','breach','dpia','ropa','case','wp','vq','evt','exc','coi','acc','plan']);
 async function onDrawer(d){
  if(!connected||!d||!FILE_TYPES.has(d.type))return;const body=document.getElementById('opDB');if(!body)return;
  let box=document.getElementById('gcFiles');if(!box){box=document.createElement('div');box.id='gcFiles';body.appendChild(box)}
@@ -202,7 +233,8 @@ async function onDrawer(d){
  box.innerHTML=`<h4>Files</h4>${files.length?files.map(f=>`<div class="op-li"><div><b>${E(f.name)}</b><div class="riskarea">${sz(f.size)} · ${E(f.by)} · ${E(new Date(f.ts).toLocaleDateString())}</div></div><span><button class="op-mini" data-gcf="${f.id}" data-name="${E(f.name)}">Download</button>${user.role==='Administrator'||user.role==='Business user'?` <button class="op-mini" data-gcd="${f.id}">Remove</button>`:''}</span></div>`).join(''):'<p class="op-note">No files attached.</p>'}<label class="op-mini p" style="display:inline-block;cursor:pointer;margin-top:6px">Attach a file<input type="file" id="gcUp" style="display:none"></label><span class="op-note" style="margin-left:8px">PDF, images, Office files, CSV, text · up to 10 MB</span>`;
 }
 const UIdrawerIs=d=>G.UI.drawer&&G.UI.drawer.id===d.id&&G.UI.drawer.type===d.type;
-G.onDrawer=onDrawer;
+G.drawerHooks.push(onDrawer);
+G.api={call:(m,u,b)=>call(m,u,b),get connected(){return connected},get user(){return user},get health(){return health}};
 document.addEventListener('change',async e=>{if(e.target.id!=='gcUp'||!e.target.files[0])return;const f=e.target.files[0],d=G.UI.drawer;if(!d)return;
  if(f.size>10*1024*1024){toast('Files can be up to 10 MB.');return}
  const r=await fetch(`${API}/api/files?profile=${encodeURIComponent(PROF)}&ref=${encodeURIComponent(d.id)}&name=${encodeURIComponent(f.name)}`,{method:'POST',headers:{authorization:'Bearer '+token},body:f});
@@ -215,16 +247,20 @@ document.addEventListener('click',async e=>{const dl=e.target.closest('[data-gcf
 async function goLive(){
  connected=true;paintPill();bindIdentity();
  try{await pull()}catch(e){connected=false;paintPill();toast('Could not load shared data: '+e.message);return}
- mountTrail();mountUsers();mountBell();await syncPeople();loadNotes();startEvents();refreshTrail(true);G.renderAll();
+ mountTrail();mountUsers();mountBell();await syncPeople();loadNotes();startEvents();refreshTrail(true);G.renderAll();(G.connectHooks||[]).forEach(h=>{try{h()}catch(e){console.warn(e)}});
  toast(`Connected as ${user.name} (${user.role}). Changes are shared live.`);
 }
-pill.addEventListener('click',e=>{if(e.target.id==='gcOut')signOut(false);if(e.target.id==='gcPwd')G.openForm('Change password',[{name:'cur',label:'Current password',type:'password',full:true},{name:'n1',label:'New password',type:'password',full:true},{name:'n2',label:'Repeat new password',type:'password',full:true}],'Change',v=>{if(v.n1!==v.n2)return 'The new passwords do not match.';call('POST','/api/password',{current:v.cur,next:v.n1}).then(r=>toast(r.ok?'Password changed.':(r.data.error||'Could not change it.')))});if(e.target.id==='gcSignIn'){ss.del(DKEY);showLogin('')}});
+pill.addEventListener('click',async e=>{if(e.target.id==='gcMfa'){const st=await call('GET','/api/mfa/status');if(!st.ok)return;if(!st.data.enabled){await mfaSetupBox(false);return}
+  if(st.data.required){toast('Two-step sign-in is required by your organisation.');return}
+  G.openForm('Two-step sign-in is on',[{name:'pw',label:'To turn it off, enter your password',type:'password',full:true},{name:'code',label:'and a current 6-digit code',full:true}],'Turn off',v=>{call('POST','/api/mfa/disable',{password:v.pw,code:v.code}).then(r=>toast(r.ok?'Two-step sign-in turned off.':(r.data.error||'Could not turn it off.')))})}
+ if(e.target.id==='gcOut')signOut(false);if(e.target.id==='gcPwd')G.openForm('Change password',[{name:'cur',label:'Current password',type:'password',full:true},{name:'n1',label:'New password',type:'password',full:true},{name:'n2',label:'Repeat new password',type:'password',full:true}],'Change',v=>{if(v.n1!==v.n2)return 'The new passwords do not match.';call('POST','/api/password',{current:v.cur,next:v.n1}).then(r=>toast(r.ok?'Password changed.':(r.data.error||'Could not change it.')))});if(e.target.id==='gcSignIn'){ss.del(DKEY);showLogin('')}});
 
 async function start(){
 
- try{const c=new AbortController(),t=setTimeout(()=>c.abort(),2000);const r=await fetch(API+'/api/health',{signal:c.signal});clearTimeout(t);const j=await r.json();if(!j||j.name!=='Forge GRC')return;health=j}catch{return}
+ try{const c=new AbortController(),t=setTimeout(()=>c.abort(),2000);const r=await fetch(API+'/api/health',{signal:c.signal});clearTimeout(t);const j=await r.json();if(!j||j.name!=='Forge GRC')return;health=j;try{const want=j.fixedDate?'demo':'real',have=localStorage.getItem('forgeGrcDate')==='real'?'real':'demo';if(want!==have&&!sessionStorage.getItem('gcDateSet')){localStorage.setItem('forgeGrcDate',want);sessionStorage.setItem('gcDateSet','1');location.reload();return}}catch{}}catch{return}
  mountPill();paintPill();
- if(token){try{const r=await call('GET','/api/me');if(r.ok){user=r.data.user;if(r.data.mustChange){showLogin('Please sign in again to choose a new password.');token=null;ss.del(TKEY);return}await goLive();return}}catch{}token=null;ss.del(TKEY)}
+ {const qs=new URLSearchParams(location.search),code=qs.get('sso'),er=qs.get('ssoerror');if(code||er){history.replaceState(null,'',location.pathname+location.hash);if(code){const r=await call('POST','/api/oidc/exchange',{code});if(r.ok){await afterLogin(r.data,'',null);return}showLogin(r.data.error||'Single sign-on failed.');return}showLogin(er);return}}
+ if(token){try{const r=await call('GET','/api/me');if(r.ok){user=r.data.user;if(r.data.mustChange){showLogin('Please sign in again to choose a new password.');token=null;ss.del(TKEY);return}if(r.data.mustMfa)await forceMfa();await goLive();return}}catch{}token=null;ss.del(TKEY)}
  if(!ss.get(DKEY))showLogin('');
 }
 start();

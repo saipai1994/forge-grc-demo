@@ -74,3 +74,20 @@ Not yet covered: single sign-on, organisation and entity setup, risks created in
 Start with `docs/OPERATIONS.md` (deploy, settings, backups), `docs/SECURITY.md` and `docs/READINESS.md` (what is built and what still needs you). Drafts of the privacy policy, terms and data processing agreement are in `docs/legal/` and need a lawyer.
 
 What a new customer gets: an Organisation module (company profile, legal entities, business units, sites) with a setup wizard and a clean-start option, user management with roles and forced password change, notifications (in-app, chat webhook, email relay hook), file attachments on records, CSV import for six record types, and a printable board pack.
+
+## Fiori-style dashboards
+
+`fiori.js` adds a Horizon-like theme (switch to Classic in the top bar), a **Home** launchpad of live KPI tiles with search across apps and records, and an **Overview** page of analytical, list and table cards with a filter bar (area, owner, rating). Tiles and cards use status colours with icons and labels, open the records behind them, and can be hidden and re-ordered per person (saved in the browser).
+
+
+## Scope, treatment, reports, assurance and the assistant
+
+- **Scope** (`scope.js`): tag records to an entity, unit and site and view the whole app for one of them. Untagged records are group-wide.
+- **Settings and trends** (`trends.js`): appetite, targets, currency, real-date mode, daily snapshots and real trend arrows.
+- **Risk treatment** (`treatment.js`): risk acceptances with approval and expiry, treatment plans, one approvals queue. Decisions are enforced on the server.
+- **Reports and declarations** (`intake.js`, `report.html`): events, policy exceptions, conflicts and gifts, and a confidential speak-up inbox with an anonymous public form.
+- **Assurance** (`assurance.js`, `vendor.html`): vendor questionnaires through private links, audit workpapers with sampling and sign-off, and a library review workflow.
+- **Assistant** (`assistant.js`): side panel that answers questions about the records you can see; uses Claude when `ANTHROPIC_API_KEY` is set, otherwise a computed briefing.
+- **Sign-in options** (`server/`): password, authenticator-app two-step, and OpenID Connect single sign-on. See `docs/OPERATIONS.md` for settings.
+
+Run the checks with `npm test` (server), `npm run test:browser` (needs `npx playwright install chromium`) and `node tests/a11y.js`.

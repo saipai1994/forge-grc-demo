@@ -30,7 +30,24 @@ The temporary password is printed once; you must change it at first sign-in.
 | `FORGE_MAIL_WEBHOOK` | URL that receives `{to, subject, text}` for each notification to a person, to relay as email |
 | `FORGE_HSTS=1` | Send Strict-Transport-Security (only behind HTTPS) |
 | `FORGE_BACKUP=0` | Turn off the built-in daily backup |
-| `FORGE_TODAY` | Fix the date (demo only) |
+| `FORGE_TODAY` | Fix the date (demo only; leave unset for real use so due dates use the real calendar) |
+| `FORGE_PUBLIC_URL` | The public address, for example `https://grc.example.com`. Needed for single sign-on redirects. |
+| `FORGE_SMTP_URL` | Send notification email directly: `smtp://user:pass@host:587` (STARTTLS) or `smtps://user:pass@host:465` |
+| `FORGE_MAIL_FROM` | From address, for example `Forge GRC <noreply@example.com>` |
+| `FORGE_REQUIRE_MFA=1` | Everyone must set up two-step sign-in (authenticator app) |
+| `FORGE_OIDC_ISSUER`, `FORGE_OIDC_CLIENT_ID`, `FORGE_OIDC_CLIENT_SECRET` | Single sign-on with any OpenID Connect provider (Entra ID, Okta, Google Workspace, Keycloak). Redirect URI to register: `<FORGE_PUBLIC_URL>/api/oidc/callback` |
+| `FORGE_OIDC_PROVISION=1`, `FORGE_OIDC_ROLE`, `FORGE_OIDC_ORG` | Create accounts on first single sign-on, with this role (default Business user) |
+| `FORGE_LOCAL_LOGIN=0` | Turn off password sign-in once single sign-on works |
+| `FORGE_CLAMD_HOST`, `FORGE_CLAMD_PORT` | Scan uploaded files with a ClamAV daemon. Uploads are refused if the scanner is down, unless `FORGE_SCAN_FAILOPEN=1` |
+| `ANTHROPIC_API_KEY`, `FORGE_MODEL` | Switch on the assistant. Without a key it shows a briefing computed from the data. |
+| `FORGE_PUBLIC_ORG` | Organisation that receives anonymous speak-up reports (default `demo`; set to your `FORGE_ORG`) |
+| `FORGE_WEBHOOK_URL` | Slack or Teams incoming webhook that receives every notification |
+| `FORGE_MAIL_WEBHOOK` | Alternative to SMTP: a URL that receives `{to, subject, text}` for each notification |
+
+## Pages people use without signing in
+
+- `/report.html`: anonymous speak-up form. Reports are stored separately from the shared workspace and only administrators and auditors can read them.
+- `/vendor.html?t=...`: a vendor answers a security questionnaire through a private link that an administrator or user issues from the vendor record. Links expire and work once for submission.
 
 ## Deploy
 
