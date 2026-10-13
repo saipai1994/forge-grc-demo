@@ -31,7 +31,7 @@ require('fs').writeFileSync('/tmp/ev.pdf','%PDF-1.4 evidence');await A.setInputF
 ok('file listed on record',/ev\.pdf/.test(await A.textContent('#gcFiles')));
 // Riya sees it too and can download
 await R.evaluate(()=>{document.getElementById('gcBellBox').style.display='none';const i=GRC.S().issues[0];GRC.openDrawer('issue',i.id)});await R.waitForFunction(()=>/ev\.pdf/.test((document.getElementById('gcFiles')||{}).textContent||''),null,{timeout:8000}).catch(()=>{});
-ok('colleague sees the file',/ev\.pdf/.test(await R.textContent('#gcFiles')));
+{const seen=/ev\.pdf/.test(await R.textContent('#gcFiles'));ok('colleague sees the file',seen);if(!seen)console.log('  debug (colleague view):',JSON.stringify(await R.evaluate(()=>({drawer:GRC.UI.drawer&&GRC.UI.drawer.type+':'+GRC.UI.drawer.id,issue0:GRC.S().issues[0].id,files:(document.getElementById('gcFiles')||{}).textContent,open:document.getElementById('opDrawer').classList.contains('show')}))))}
 // company setup syncs
 await A.evaluate(()=>{GRC.S().org.profile.name='Acme Finance';GRC.S().org.profile.done=true;GRC.S().org.entities.push({id:'ENT-001',name:'Acme Finance Ltd',type:'Parent company',country:'India',regNo:'',regulators:'RBI',owner:''});GRC.save()});
 await R.waitForTimeout(1500);ok('company profile shared live',await R.evaluate(()=>GRC.S().org.profile.name==='Acme Finance'&&GRC.S().org.entities.length===1));
