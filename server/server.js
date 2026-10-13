@@ -151,7 +151,7 @@ const FILES_DIR=path.join(DATA,'files');
 
 async function api(req,res,url){
  const p=url.pathname;
- if(p==='/api/health')return send(res,200,{ok:true,name:'Forge GRC',version:1,hint:process.env.FORGE_SHOW_DEMO_LOGINS!=='0'?`Demo accounts: morgan@forge.demo (administrator), jordan@, priya@, evan@, sam@, audrey@ (auditor) · password ${DEMO_PW}`:''});
+ if(p==='/api/health')return send(res,200,{ok:true,name:'Forge GRC',version:1,today:today(),fixedDate:!!process.env.FORGE_TODAY,hint:process.env.FORGE_SHOW_DEMO_LOGINS!=='0'?`Demo accounts: morgan@forge.demo (administrator), jordan@, priya@, evan@, sam@, audrey@ (auditor) · password ${DEMO_PW}`:''});
  if(p==='/api/login'&&req.method==='POST'){
   const ip=req.socket.remoteAddress,a=attempts.get(ip)||{n:0,t:Date.now()};if(Date.now()-a.t>6e5){a.n=0;a.t=Date.now()}if(a.n>=20)return send(res,429,{error:'Too many attempts. Try again in a few minutes.'});
   const b=await readBody(req),em=String(b.email||'').toLowerCase().trim(),lk=lockouts.get(em)||{n:0,t:Date.now()};

@@ -94,11 +94,11 @@ actions['org-wizard']=()=>{
 };
 
 // ---------------------------------------------------------------- clean start
-const EMPTY_KEEP=new Set(['v','seq','appetite','org','ovr','myrisks']);
+const EMPTY_KEEP=new Set(['v','seq','appetite','org','ovr','myrisks','targets','scopeMap']);
 function emptyDeep(v,depth){if(Array.isArray(v))return [];if(v&&typeof v==='object'&&depth<4){const o={};for(const k in v)o[k]=emptyDeep(v[k],depth+1);return o}return v}
 function cleanStart(){
  const s=S();for(const k of Object.keys(s)){if(EMPTY_KEEP.has(k))continue;if(k==='log'){s.log=[];continue}s[k]=emptyDeep(s[k],0)}
- s.obl=[];s.org.profile.mode='clean';applyClean();
+ s.obl=[];s.snaps={};s.snapsDemo=false;s.org.profile.mode='clean';try{localStorage.setItem('forgeGrcDate','real')}catch{}applyClean();
 }
 function applyClean(){
  const o=S().org;if(!o||o.profile.mode!=='clean'||o.__applied)return;

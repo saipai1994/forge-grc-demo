@@ -222,7 +222,7 @@ pill.addEventListener('click',e=>{if(e.target.id==='gcOut')signOut(false);if(e.t
 
 async function start(){
 
- try{const c=new AbortController(),t=setTimeout(()=>c.abort(),2000);const r=await fetch(API+'/api/health',{signal:c.signal});clearTimeout(t);const j=await r.json();if(!j||j.name!=='Forge GRC')return;health=j}catch{return}
+ try{const c=new AbortController(),t=setTimeout(()=>c.abort(),2000);const r=await fetch(API+'/api/health',{signal:c.signal});clearTimeout(t);const j=await r.json();if(!j||j.name!=='Forge GRC')return;health=j;try{const want=j.fixedDate?'demo':'real',have=localStorage.getItem('forgeGrcDate')==='real'?'real':'demo';if(want!==have&&!sessionStorage.getItem('gcDateSet')){localStorage.setItem('forgeGrcDate',want);sessionStorage.setItem('gcDateSet','1');location.reload();return}}catch{}}catch{return}
  mountPill();paintPill();
  if(token){try{const r=await call('GET','/api/me');if(r.ok){user=r.data.user;if(r.data.mustChange){showLogin('Please sign in again to choose a new password.');token=null;ss.del(TKEY);return}await goLive();return}}catch{}token=null;ss.del(TKEY)}
  if(!ss.get(DKEY))showLogin('');

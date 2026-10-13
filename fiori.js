@@ -182,34 +182,40 @@ function M(f){
 }
 
 // ---------------------------------------------------------------- tiles (Home)
-const TARGET={controls:85,attest:80,oblig:90};
+const TARGET=new Proxy({},{get:(_,k)=>G.target?G.target(k):({controls:85,attest:80,oblig:90})[k]});
+G.metrics=M;
 function tiles(){
  const m=M(),s=m.s;const T=[];const add=t=>T.push(t);
  const L=(label,a)=>()=>G.openList(label,ids(a));
- add({id:'t-out',g:'Risk',title:'Risks above appetite',sub:`Appetite ${m.ap} · ${risks.length} risks`,num:m.out.length,st:m.out.length?'negative':'good',foot:m.out.length?sem('negative','Needs treatment or acceptance'):sem('good','All within appetite'),click:L('Risks above appetite',m.out)});
+ add({metric:'out',id:'t-out',g:'Risk',title:'Risks above appetite',sub:`Appetite ${m.ap} · ${risks.length} risks`,num:m.out.length,st:m.out.length?'negative':'good',foot:m.out.length?sem('negative','Needs treatment or acceptance'):sem('good','All within appetite'),click:L('Risks above appetite',m.out)});
  add({id:'t-prof',g:'Risk',wide:true,title:'Residual risk profile',sub:'Open the register to see every risk',chart:stack(['Critical','High','Medium','Low'].map(k=>({label:k,value:risks.filter(r=>r.rating===k).length,color:fill[RATING[k]],ids:risks.filter(r=>r.rating===k),dl:k}))),num:risks.length,unit:'risks',click:()=>nav('risks')});
- add({id:'t-kri',g:'Risk',title:'Indicators in red',sub:`${m.kris.length} tracked · ${m.amb.length} amber`,num:m.red.length,st:m.red.length?'negative':'good',foot:m.red.length?sem('negative','Threshold breached'):sem('good','Within tolerance'),click:L('Indicators in red',m.red)});
+ add({metric:'red',id:'t-kri',g:'Risk',title:'Indicators in red',sub:`${m.kris.length} tracked · ${m.amb.length} amber`,num:m.red.length,st:m.red.length?'negative':'good',foot:m.red.length?sem('negative','Threshold breached'):sem('good','Within tolerance'),click:L('Indicators in red',m.red)});
  const mo=m.months.map(k=>({label:k.slice(5)+'/'+k.slice(2,4),value:m.byMonth[k].v,ids:m.byMonth[k].ids}));const lastTwo=mo.slice(-2);
  const dl=lastTwo.length===2&&lastTwo[0].value?Math.round((lastTwo[1].value-lastTwo[0].value)/lastTwo[0].value*100):null;
  add({id:'t-loss',g:'Risk',wide:true,title:'Net operational losses',sub:'By month, after recoveries',num:inr(m.net).replace(/\.0+$/,''),foot:dl==null?'':sem(dl>0?'negative':'good',`${dl>0?'▲':'▼'} ${Math.abs(dl)}% vs previous month`),chart:mo.length?line(mo.map(p=>({...p,label:p.label})),inr):'<span class="s">No loss events recorded</span>',click:L('Loss events',s.losses)});
  add({id:'t-lev',g:'Risk',title:'Loss events logged',sub:`${s.losses.filter(l=>l.status!=='Closed').length} still open`,num:s.losses.length,st:'neutral',click:L('Loss events',s.losses)});
  const ce=pct(m.eff.length,m.controls.length),cst=ce>=TARGET.controls?'good':ce>=TARGET.controls-10?'critical':'negative';
- add({id:'t-ctl',g:'Controls and assurance',title:'Control effectiveness',sub:`Target ${TARGET.controls}% · ${m.controls.length} controls`,num:ce,unit:'%',st:cst,foot:sem(cst,`${ce>=TARGET.controls?'▲':'▼'} ${Math.abs(ce-TARGET.controls)} pts ${ce>=TARGET.controls?'above':'below'} target`),click:L('Controls',m.controls)});
- add({id:'t-due',g:'Controls and assurance',title:'Tests due or overdue',sub:`${m.bad.length} ineffective`,num:m.due.length,st:m.due.length?'critical':'good',foot:m.due.length?sem('critical','Schedule testing'):sem('good','Testing up to date'),click:L('Controls due for testing',m.due)});
+ add({metric:'ctl',id:'t-ctl',g:'Controls and assurance',title:'Control effectiveness',sub:`Target ${TARGET.controls}% · ${m.controls.length} controls`,num:ce,unit:'%',st:cst,foot:sem(cst,`${ce>=TARGET.controls?'▲':'▼'} ${Math.abs(ce-TARGET.controls)} pts ${ce>=TARGET.controls?'above':'below'} target`),click:L('Controls',m.controls)});
+ add({metric:'due',id:'t-due',g:'Controls and assurance',title:'Tests due or overdue',sub:`${m.bad.length} ineffective`,num:m.due.length,st:m.due.length?'critical':'good',foot:m.due.length?sem('critical','Schedule testing'):sem('good','Testing up to date'),click:L('Controls due for testing',m.due)});
  const pd=pct(m.pdone.length,m.plan.length);
  add({id:'t-aud',g:'Controls and assurance',title:'Audit plan delivery',sub:`${m.pdone.length} of ${m.plan.length} complete`,num:pd,unit:'%',st:m.plate.length?'critical':'neutral',foot:m.plate.length?sem('critical',`${m.plate.length} late to start`):'',click:()=>nav('audit')});
  const of=findingsOpen();
  add({id:'t-fnd',g:'Controls and assurance',title:'Open audit findings',sub:`${of.filter(f=>f[6]==='Overdue').length} overdue`,num:of.length,st:of.some(f=>f[6]==='Overdue')?'negative':of.length?'critical':'good',click:L('Open findings',of.map(f=>f[0]))});
- add({id:'t-iss',g:'Issues and actions',title:'Open issues',sub:`${m.od.length} overdue`,num:m.open.length,st:m.od.length?'critical':'good',foot:m.od.length?sem('critical','Escalation applies'):sem('good','None overdue'),click:L('Open issues',m.open)});
- add({id:'t-od',g:'Issues and actions',title:'Overdue issues',sub:'Past their due date',num:m.od.length,st:m.od.length?'negative':'good',click:L('Overdue issues',m.od)});
+ add({metric:'open',id:'t-iss',g:'Issues and actions',title:'Open issues',sub:`${m.od.length} overdue`,num:m.open.length,st:m.od.length?'critical':'good',foot:m.od.length?sem('critical','Escalation applies'):sem('good','None overdue'),click:L('Open issues',m.open)});
+ add({metric:'od',id:'t-od',g:'Issues and actions',title:'Overdue issues',sub:'Past their due date',num:m.od.length,st:m.od.length?'negative':'good',click:L('Overdue issues',m.od)});
  add({id:'t-age',g:'Issues and actions',title:'Average age of open issues',sub:'Days since raised',num:m.avgAge,unit:'days',st:m.avgAge>60?'critical':'neutral',click:L('Open issues',m.open)});
  add({id:'t-my',g:'Issues and actions',title:'My open actions',sub:me().name,num:m.mine.length,st:m.mine.length?'critical':'good',foot:m.mine.length?'Issues with actions assigned to you':sem('good','Nothing assigned'),click:L('Issues with my actions',m.mine)});
  const oq=pct(m.oc.length,m.obl.length),ost=!m.obl.length?'neutral':oq>=TARGET.oblig?'good':oq>=TARGET.oblig-15?'critical':'negative';
- add({id:'t-obl',g:'Compliance and third parties',title:'Obligations compliant',sub:m.obl.length?`${m.oc.length} of ${m.obl.length} · ${m.og.length} gaps`:'No framework adopted yet',num:m.obl.length?oq:'–',unit:m.obl.length?'%':'',st:ost,foot:m.obl.length?sem(ost,`Target ${TARGET.oblig}%`):'Adopt a framework pack',click:()=>nav('obligations')});
+ add({metric:'obl',id:'t-obl',g:'Compliance and third parties',title:'Obligations compliant',sub:m.obl.length?`${m.oc.length} of ${m.obl.length} · ${m.og.length} gaps`:'No framework adopted yet',num:m.obl.length?oq:'–',unit:m.obl.length?'%':'',st:ost,foot:m.obl.length?sem(ost,`Target ${TARGET.oblig}%`):'Adopt a framework pack',click:()=>nav('obligations')});
  add({id:'t-chg',g:'Compliance and third parties',title:'Regulatory changes open',sub:'Not yet implemented',num:m.chg.length,st:m.chg.length?'critical':'good',click:L('Regulatory changes',m.chg)});
  add({id:'t-ven',g:'Compliance and third parties',title:'High-risk vendors',sub:`${m.vendors.length} vendors`,num:m.vhi.length,st:m.vhi.length?'critical':'good',click:L('High-risk vendors',m.vhi)});
  add({id:'t-pol',g:'Compliance and third parties',title:'Policies needing attention',sub:`${m.pOver.length} review overdue · ${m.pLow.length} low attestation`,num:new Set([...ids(m.pOver),...ids(m.pLow)]).size,st:m.pOver.length?'negative':m.pLow.length?'critical':'good',click:L('Policies needing attention',[...m.pOver,...m.pLow])});
  return T}
+function trendLine(key){
+ if(!key||!G.trendOf)return '';const tr=G.trendOf(key,7);if(!tr)return '';const mt=(G.METRICS||[]).find(x=>x.k===key)||{low:true};
+ if(tr.delta===0)return `<div class="f" style="margin-top:2px">${sem('neutral','No change in '+tr.days+' days')}${tr.demo?' <span title="Illustrative history for sample data">·</span>':''}</div>`;
+ const good=mt.low?tr.delta<0:tr.delta>0,sign=tr.delta>0?'▲ +':'▼ −';
+ return `<div class="f" style="margin-top:2px">${sem(good?'good':'negative',`${sign}${Math.abs(tr.delta)}${key==='ctl'||key==='obl'?' pts':''} in ${tr.days} days`)}</div>`}
 function findingsOpen(){try{return findings.filter(f=>f[6]!=='Closed')}catch{return []}}
 const nav=v=>{G.go(v);G.renderAll()};
 
@@ -241,7 +247,7 @@ function renderHome(){
  const org=(G.org&&G.org().profile)||{};
  window.__fxTiles=Object.fromEntries(all.map(t=>[t.id,t]));
  const apps=[...document.querySelectorAll('.nav button')].filter(b=>!['launchpad','overview'].includes(b.dataset.view)).map(b=>({v:b.dataset.view,ico:(b.querySelector('.ico')||{}).textContent||'•',label:(b.querySelector('.navtext')||{}).textContent||b.dataset.view}));
- const tile=t=>`<button class="fx-tile${t.wide?' wide':''}" data-op="fx-tile" data-id="${t.id}"><h4>${E(t.title)}</h4><div class="s">${E(t.sub||'')}</div>${t.chart?`<div class="chart">${t.chart}</div>`:''}<div class="n" ${t.st?`style="color:${ST[t.st].c}"`:''}>${t.num===undefined?'':E(String(t.num))}${t.unit?`<small>${E(t.unit)}</small>`:''}</div><div class="f">${t.foot||''}</div></button>`;
+ const tile=t=>`<button class="fx-tile${t.wide?' wide':''}" data-op="fx-tile" data-id="${t.id}"><h4>${E(t.title)}</h4><div class="s">${E(t.sub||'')}</div>${t.chart?`<div class="chart">${t.chart}</div>`:''}<div class="n" ${t.st?`style="color:${ST[t.st].c}"`:''}>${t.num===undefined?'':E(String(t.num))}${t.unit?`<small>${E(t.unit)}</small>`:''}</div><div class="f">${t.foot||''}</div>${trendLine(t.metric)}</button>`;
  pn.innerHTML=`<div class="fx"><div class="fx-hello"><div><h1>${greet}, ${E(me().name.split(' ')[0])}</h1><p>${E(org.name||'Your organisation')}${G.scopeLabel&&G.scopeLabel()?' · Scope: <b>'+E(G.scopeLabel())+'</b>':''} · ${E(fmt(TODAY))} · ${E(me().role)}</p></div><div class="fx-search"><input id="fxQ" type="search" placeholder="Search apps, risks, controls, issues, obligations…" aria-label="Search" autocomplete="off" value="${E(homeQ)}"><div class="fx-results" id="fxRes" hidden></div></div><div style="display:flex;gap:8px"><button class="btn" data-op="fx-mgr-home">Personalise</button><button class="btn primary" data-op="goto" data-v="overview">Overview page</button></div></div>`+
   groups.map(g=>{const ts=vis.filter(t=>t.g===g);return ts.length?`<section class="fx-group"><h2>${E(g)}</h2><div class="fx-tiles">${ts.map(tile).join('')}</div></section>`:''}).join('')+
   `<section class="fx-group"><h2>Apps</h2><div class="fx-tiles">${apps.map(a=>`<button class="fx-tile app" data-op="goto" data-v="${E(a.v)}"><span class="ico" aria-hidden="true">${E(a.ico)}</span><h4>${E(a.label)}</h4></button>`).join('')}</div></section></div>`;
@@ -303,9 +309,16 @@ function cards(){
   body:`<div class="fx-list">${pa.slice(0,5).map(p=>{const a=Math.round((p.att||0)/p.aud*100),sk=a>=TARGET.attest?'good':a>=TARGET.attest-10?'critical':'negative';return `<div data-op="open" data-t="policy" data-id="${E(p.id)}" tabindex="0"><div style="flex:1;min-width:0"><b>${E(p.title.length>38?p.title.slice(0,36)+'…':p.title)}</b><div class="fx-bul"><div>${bulletHi(a,TARGET.attest)}</div><span style="font-size:12px;font-weight:700">${a}%</span></div></div></div>`}).join('')||'<p class="op-note">No published policies.</p>'}</div>`,foot:['Open policies','policies']});
  add({id:'c-my',title:'My work',sub:`${me().name}`,kpi:{n:m.mine.length,t:'issues with your actions',st:m.mine.length?'critical':'good'},span:1,
   body:`<div class="fx-list">${m.mine.slice(0,5).map(i=>`<div data-op="open" data-t="issue" data-id="${E(i.id)}" tabindex="0"><div><b>${E(i.id)} · ${E(i.title.length>40?i.title.slice(0,38)+'…':i.title)}</b><small>${i.actions.filter(a=>!a.done&&a.owner===me().name).length} action(s) open · due ${E(fmt(i.due))}</small></div>${G.isOverdue(i)?sem('negative','Overdue'):''}</div>`).join('')||`<p class="op-note">${sem('good','Nothing assigned to you')}</p>`}</div>`,foot:['Open issues','issues']});
+ add({id:'c-trend',title:'Trend',sub:(S().snapsDemo?'Illustrative history for sample data · ':'')+'Daily snapshots, group-wide',kpi:null,span:3,body:trendBody(),foot:['Open settings','org']});
  add({id:'c-chg',title:'Regulatory change',sub:'Open items, soonest effective date first',kpi:{n:m.chg.length,t:m.chg.length?'to implement':'none open',st:m.chg.length?'critical':'good'},span:2,
   body:`<div class="fx-list">${[...m.chg].sort((a,b)=>a.effective<b.effective?-1:1).slice(0,5).map(r=>`<div data-op="open" data-t="regchange" data-id="${E(r.id)}" tabindex="0"><div><b>${E(r.title.length>64?r.title.slice(0,62)+'…':r.title)}</b><small>${E(r.source)} · effective ${E(fmt(r.effective))} · ${E(r.owner)}</small></div>${sem(r.impact==='High'?'negative':r.impact==='Medium'?'critical':'neutral',r.impact+' impact')}</div>`).join('')||`<p class="op-note">${sem('good','No open regulatory changes')}</p>`}</div>`,foot:['Open regulatory change','regchange']});
  return C_}
+function trendBody(){
+ const mets=G.METRICS||[];if(!mets.length)return '';const key=F.trend||'out',mt=mets.find(x=>x.k===key)||mets[0],tr=G.trendOf?G.trendOf(mt.k,30):null;
+ const pts=tr?tr.series.slice(-26).map(x=>({label:x.date.slice(5),value:x.v})):[];
+ const delta=tr?`<span style="margin-left:10px;font-size:12px">${sem(((mt.low?tr.delta<0:tr.delta>0)?'good':tr.delta===0?'neutral':'negative'),`${tr.delta>0?'▲ +':tr.delta<0?'▼ −':''}${Math.abs(tr.delta)} over ${tr.days} days`)}</span>`:'';
+ return `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${mets.map(x=>`<button class="btn" data-op="fx-trend" data-k="${x.k}" style="${x.k===mt.k?'background:#EBF5FE;border-color:#0070F2':''}">${E(x.label)}</button>`).join('')}${delta}</div>${pts.length>1?line(pts,mt.fmt,150):'<p class="op-note">Not enough history yet. Snapshots are saved once a day.</p>'}`}
+actions['fx-trend']=b=>{F.trend=b.dataset.k;renderOverview()};
 function renderOverview(){
  const pn=G.panel('overview','cards');if(!pn)return;
  const areas=[...new Set(risks.map(r=>r.area))].sort(),owners=G.people(),all=cards(),lay=layout('ovp',all),vis=lay.items.filter(c=>!lay.hidden.has(c.id));
