@@ -74,3 +74,7 @@ Not yet covered: single sign-on, organisation and entity setup, risks created in
 Start with `docs/OPERATIONS.md` (deploy, settings, backups), `docs/SECURITY.md` and `docs/READINESS.md` (what is built and what still needs you). Drafts of the privacy policy, terms and data processing agreement are in `docs/legal/` and need a lawyer.
 
 What a new customer gets: an Organisation module (company profile, legal entities, business units, sites) with a setup wizard and a clean-start option, user management with roles and forced password change, notifications (in-app, chat webhook, email relay hook), file attachments on records, CSV import for six record types, and a printable board pack.
+
+## Fiori-style dashboards
+
+`fiori.js` adds a Horizon-like theme (switch to Classic in the top bar), a **Home** launchpad of live KPI tiles with search across apps and records, and an **Overview** page of analytical, list and table cards with a filter bar (area, owner, rating). Tiles and cards use status colours with icons and labels, open the records behind them, and can be hidden and re-ordered per person (saved in the browser).

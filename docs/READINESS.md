@@ -14,6 +14,7 @@ Updated with each release. "Built" means it is in this repository and tested; "N
 | CSV import (issues, controls, vendors, policies, losses, indicators) | Built |
 | Board pack (print to PDF) | Built |
 | Guide, keyboard access, small-screen layout | Built |
+| Fiori-style Home launchpad, Overview cards, Horizon theme | Built |
 | Backups and restore | Built (daily plus on demand) |
 | Security overview, buyer questionnaire, ops runbook | Written |
 | Privacy policy, terms, DPA | Drafts only. **Needs you** (lawyer) |
