@@ -104,7 +104,7 @@ const id3=await mkReq(doc3,[{name:'Ann Partner',email:'ann@partner.example',inte
 const t3=(await issue(id3,'s1')).token;const d3=db();d3.prepare("UPDATE sign_tokens SET expires='2026-10-11' WHERE req_id=?").run(id3);d3.close();
 const i3=await info(t3);ok('expired link refused with the generic message',i3.status===404&&/not valid or has expired/.test(i3.j.error));
 ok('expired link cannot sign or fetch the file',(await submit(t3,{action:'sign',method:'typed',typed:'Ann Partner',consent:true})).status===404&&(await fetch(U+'/api/sign/file?t='+t3)).status===404);
-const t3b=(await issue(id3,'s1')).token;ok('a fresh link works',(await info(t3b)).status===200);
+const i3b=await issue(id3,'s1'),t3b=i3b.token;const i3c=await info(t3b);ok('a fresh link works',i3c.status===200,JSON.stringify([i3b,i3c.status,i3c.j]).slice(0,300));
 
 // ---- decline through the page
 const E3=await ext(U+'/sign.html?t='+t3b);await E3.p.waitForSelector('#dc');
