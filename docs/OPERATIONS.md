@@ -61,7 +61,17 @@ Administrators can watch regulator and law-firm feeds (RSS 2.0 or Atom) from **R
 ## Pages people use without signing in
 
 - `/report.html`: anonymous speak-up form. Reports are stored separately from the shared workspace and only administrators and auditors can read them.
+- `/sign.html?t=...`: a person outside the organisation signs or declines one document through a private link (see E-signature below).
 - `/vendor.html?t=...`: a vendor answers a security questionnaire through a private link that an administrator or user issues from the vendor record. Links expire and work once for submission.
+
+
+## E-signature
+
+- External signers use `/sign.html?t=...` without signing in (like `/vendor.html`). Open the request, choose **Copy signing link** next to the external signer, and send the link to that person. **Email link** sends it for you when email is configured (`FORGE_SMTP_URL`, `FORGE_MAIL_FROM`); otherwise copy the link. Creating a new link cancels the old one. Links expire the day after the request due date and work for one signature or decline.
+- Settings: `FORGE_PUBLIC_URL` (used in the emailed link), `FORGE_TRUST_PROXY=1` (record the signer's address from `X-Forwarded-For` when you run behind a reverse proxy you control; do not set it otherwise, because the header can be forged). No other settings are needed.
+- Stored documents are in `data/files/`. If someone alters or replaces a stored file after signing was requested, external signers are told the document cannot be shown or signed, and the requester is notified. Back up `data/files/` together with the database.
+- This is a **simple electronic signature**, not Aadhaar eSign and not a digital signature certificate. Legal sufficiency must be confirmed per document type before you rely on it. See `docs/SECURITY.md`.
+- Tests: `node server/test-esign.js` (part of `npm test`; checks the server's hashing against the browser code), `node tests/demo-esign.js` and `node tests/live-esign.js` (the live test starts its own server).
 
 ## Deploy
 

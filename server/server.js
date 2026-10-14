@@ -11,6 +11,7 @@ const MAIL=require('./mail.js');
 const SCAN=require('./scan.js');
 const OIDC=require('./oidc.js');
 const REGFEED=require('./regfeed.js'); // regulatory feed ingestion (see server/regfeed.js)
+const ESIGN=require('./esign.js'); // e-signature: external signing links, public signing endpoints, gate on esReq (see server/esign.js)
 
 const PORT=+process.env.PORT||8080,ROOT=path.join(__dirname,'..'),DATA=process.env.FORGE_DATA||path.join(ROOT,'data');
 const INGEST_KEY=process.env.FORGE_INGEST_KEY||'dev-ingest-key';
@@ -62,6 +63,8 @@ function readTicket(t){const [p,sg]=String(t||'').split('.');if(!p||!sg)return n
 const authUser=(req,url)=>verify((req.headers.authorization||'').replace(/^Bearer /,'')||url.searchParams.get('token'));
 
 // ---- permissions: what each role may change (enforced here, never in the browser) ----
+// e-signature / documents: esReq, dmsDocs and dmsFolders are read-only for Auditors because Auditor uses an `only` allow-list that omits them;
+// a Function user may not create esReq (checked in ESIGN.gate, which needs the stored state to know whether a record is new).
 const COLL_ALL=null;
 const RULES={
  'Administrator':{},
@@ -71,7 +74,9 @@ const RULES={
 };
 function allowed(role,op){const r=RULES[role];if(!r)return false;const top=op.p[0];
  if(r.only)return r.only.includes(top)&&op.op!=='del';
- if(r.deny&&r.deny.includes(top))return false;if(r.noDelete&&(op.op==='del'||op.op==='unset'))return false;return true}
+ if(r.deny&&r.deny.includes(top))return false;if(r.noDelete&&(op.op==='del'||op.op==='unset')&&!(op.op==='del'&&DMS_DEL.has(top)))return false;return true}
+// documents: owners may delete their own documents and folders (dms-core.js checks ownership and legal hold in the browser)
+const DMS_DEL=new Set(['dmsDocs','dmsFolders']);
 
 // ---- state ----
 const getDoc=(org,profile)=>{const r=db.prepare('SELECT rev,json FROM docs WHERE org=? AND profile=?').get(org,profile);return r?{rev:r.rev,state:JSON.parse(r.json)}:null};
@@ -127,6 +132,7 @@ function applyOps(org,profile,user,ops,source){
   if(op.op==='put'&&op.isNew){const arr=SYNC_get(st,op.p);if(arr&&arr.some(x=>x.id===op.id)){const m=/^(.*?)(\d+)$/.exec(op.id);if(m){const used=arr.map(x=>x.id).filter(i=>i.startsWith(m[1])).map(i=>+i.slice(m[1].length)||0);const nid=m[1]+String(Math.max(...used)+1).padStart(m[2].length,'0');renames[op.id]=nid;op.rec={...op.rec,id:nid};op.id=nid}}}
   if(op.op==='put'&&!op.isNew&&Array.isArray(op.ch)){const arr0=SYNC_get(st,op.p),ex=arr0&&arr0.find(x=>x.id===op.id);if(ex){const m={...ex};op.ch.forEach(f=>{if(f in op.rec)m[f]=op.rec[f];else delete m[f]});op.rec=m}}
   const gate=approvalGate(st,op,user);if(gate){denied.push(op);continue}
+  if(ESIGN.gate(st,op,user,today())){denied.push(op);continue} // e-signature: nobody signs for someone else, sealed fields are frozen
   const res=SYNC.apply(st,op);if(!res)continue;
   applied.push(op);try{onChange(org,profile,op,res,user)}catch(e){console.error('notify',e.message)}
   const coll=op.p.join('.');
@@ -177,6 +183,7 @@ function ingestKri(org,profile,body){
 
 // ---- regfeed: tables (reg_feeds, reg_items) are created by REGFEED.init; it reuses applyOps so converted items sync like any edit ----
 REGFEED.init({db,getDoc,applyOps,logA,broadcast,send:(res,code,obj)=>send(res,code,obj),readBody:req=>readBody(req),okProfile,today});
+ESIGN.init({db,getDoc,applyOps,logA,note,send:(res,code,obj)=>send(res,code,obj),readBody:req=>readBody(req),okProfile,today,dataDir:DATA}); // creates sign_tokens
 
 // ---- http ----
 const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css','.json':'application/json','.png':'image/png','.svg':'image/svg+xml','.ico':'image/x-icon','.md':'text/markdown'};
@@ -215,6 +222,7 @@ async function api(req,res,url){
   const r=ingestKri(b.org||'demo',profile,b);return send(res,r.status,r);
  }
  if(p==='/api/vq/form'||p==='/api/vq/save'||p==='/api/vq/submit')return vqPublic(req,res,url,p);
+ if(p==='/api/sign/info'||p==='/api/sign/file'||p==='/api/sign/submit')return ESIGN.publicRoute(req,res,url,p); // external signers, by token, no account
  if(p==='/api/speakup'&&req.method==='POST')return speakupSubmit(req,res);
  if(p==='/api/speakup/status'&&req.method==='GET')return speakupStatus(url,res);
  if(p==='/api/speakup/reply'&&req.method==='POST')return speakupReply(req,res);
@@ -257,6 +265,7 @@ async function api(req,res,url){
  }
  if(p.startsWith('/api/regfeed/'))return REGFEED.route(req,res,url,user); // regulatory feeds: any signed-in user; admin checks are inside
  if(p==='/api/vq/issue'&&req.method==='POST')return vqIssue(req,res,user);
+ if(p==='/api/sign/issue'&&req.method==='POST')return ESIGN.issue(req,res,user);
  if(p==='/api/assistant'&&req.method==='POST')return assistant(req,res,user);
  if(p.startsWith('/api/speakup'))return speakupStaff(req,res,url,p,user);
  if(p==='/api/notifications'&&req.method==='GET'){
@@ -266,6 +275,7 @@ async function api(req,res,url){
  if(p==='/api/notifications/read'&&req.method==='POST'){const b=await readBody(req);const ids=Array.isArray(b.ids)?b.ids:[];const ins=db.prepare('INSERT OR IGNORE INTO note_read VALUES(?,?)');ids.slice(0,200).forEach(i=>ins.run(user.id,+i));return send(res,200,{ok:true})}
  if(p==='/api/files'&&req.method==='POST'){
   if(user.role==='Auditor'&&false)return send(res,403,{error:'Not permitted'});
+  if(user.role==='Auditor'&&/^DOC-/.test(url.searchParams.get('ref')||''))return send(res,403,{error:'Auditors have read-only access to documents.'}); // document files (ref DOC-xxxx)
   if(!okProfile(profile))return send(res,400,{error:'Bad profile'});
   const ref=(url.searchParams.get('ref')||'').slice(0,40),name=path.basename(url.searchParams.get('name')||'').replace(/[^\w.\- ()]/g,'_').slice(0,120),ext=path.extname(name).slice(1).toLowerCase();
   if(!ref||!name)return send(res,400,{error:'Name and record are required'});if(!FILE_OK.has(ext))return send(res,400,{error:'This file type is not accepted. Allowed: '+[...FILE_OK].join(', ')});

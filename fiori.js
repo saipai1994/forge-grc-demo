@@ -212,6 +212,7 @@ function tiles(){
  add({id:'t-chg',g:'Compliance and third parties',title:'Regulatory changes open',sub:'Not yet implemented',num:m.chg.length,st:m.chg.length?'critical':'good',click:L('Regulatory changes',m.chg)});
  add({id:'t-ven',g:'Compliance and third parties',title:'High-risk vendors',sub:`${m.vendors.length} vendors`,num:m.vhi.length,st:m.vhi.length?'critical':'good',click:L('High-risk vendors',m.vhi)});
  add({id:'t-pol',g:'Compliance and third parties',title:'Policies needing attention',sub:`${m.pOver.length} review overdue · ${m.pLow.length} low attestation`,num:new Set([...ids(m.pOver),...ids(m.pLow)]).size,st:m.pOver.length?'negative':m.pLow.length?'critical':'good',click:L('Policies needing attention',[...m.pOver,...m.pLow])});
+ (G.fxTiles||[]).forEach(f=>{try{const t=f();if(t)add(t)}catch(e){console.warn('home tile',e)}}); // extension point: other modules (e-signature) add Home tiles by pushing a function onto GRC.fxTiles
  return T}
 function trendLine(key){
  if(!key||!G.trendOf)return '';const tr=G.trendOf(key,7);if(!tr)return '';const mt=(G.METRICS||[]).find(x=>x.k===key)||{low:true};

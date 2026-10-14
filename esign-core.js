@@ -76,7 +76,9 @@ function reviseSigned(id){const d=D.doc(id);if(!d||!d.sig)throw new Error('This 
 async function verify(id){
  const r=find(id);if(!r)return{ok:false,reason:'Request not found'};const out={ok:true,docOk:true,sigs:[],sealOk:null,problems:[]};
  const chk=await D.verify(r.doc,r.ver);if(!chk.ok||chk.expected!==r.docSha){out.docOk=false;out.ok=false;out.problems.push('The document file does not match the checksum recorded when signing was requested.')}
- for(const s of r.signers.filter(x=>x.status==='Signed')){const ok=(await sigHash(r,s))===s.sigHash;out.sigs.push({id:s.id,name:s.name,ok});if(!ok){out.ok=false;out.problems.push(`The record of ${s.name}'s signature has been altered.`)}}
+ for(const s of r.signers.filter(x=>x.status==='Signed')){let ok=(await sigHash(r,s))===s.sigHash;
+  // FIX: the drawn image must also match its recorded hash (sigHash covers imageSha, not the image bytes, so a swapped image went unnoticed)
+  if(ok&&s.method==='drawn'&&(await D.shaText(s.image||''))!==s.imageSha)ok=false;out.sigs.push({id:s.id,name:s.name,ok});if(!ok){out.ok=false;out.problems.push(`The record of ${s.name}'s signature has been altered.`)}}
  if(r.seal){out.sealOk=(await sealHash(r))===r.seal.sha;if(!out.sealOk){out.ok=false;out.problems.push('The completion seal does not match the signatures.')}}
  return out}
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));

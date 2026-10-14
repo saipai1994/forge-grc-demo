@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow">
+<title>Sign a document</title>
+<style>
+:root{--ink:#1D2D3E;--sub:#556B82;--line:#D9D9D9;--brand:#0070F2;--bg:#F5F6F7;--bad:#AA0808;--good:#256F3A;--warn:#85530f}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "72","Segoe UI",Arial,sans-serif}
+main{max-width:760px;margin:0 auto;padding:28px 16px 80px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:18px;margin:26px 0 8px;color:#0064D9}p{margin:0 0 12px;color:var(--sub)}
+.card{background:#fff;border-radius:16px;box-shadow:0 0 2px #00000026,0 2px 4px #0000001f;padding:18px 20px;margin-bottom:14px}
+.legal{background:#FFF4E1;color:var(--warn);border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:14px}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0 0 10px;font-size:14px}dt{color:var(--sub)}dd{margin:0;word-break:break-word}
+code{font:12px ui-monospace,Menlo,Consolas,monospace;background:#EEF1F4;padding:1px 5px;border-radius:4px;word-break:break-all}
+pre.doc{white-space:pre-wrap;word-break:break-word;max-height:260px;overflow:auto;background:#F7F9FB;border:1px solid #BCC3CA;border-radius:8px;padding:12px;font:14px/1.55 ui-monospace,Menlo,Consolas,monospace;margin:8px 0}
+img.doc{max-width:100%;max-height:340px;border:1px solid var(--line);border-radius:8px}
+label{font-weight:600}input[type=text],textarea{width:100%;font:inherit;padding:9px 11px;border:1px solid #BCC3CA;border-radius:8px;margin-top:6px}textarea{min-height:80px}
+.opts{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}.opts label{display:flex;gap:6px;align-items:center;border:1px solid #BCC3CA;border-radius:18px;padding:6px 14px;cursor:pointer;font-size:15px;background:#fff;font-weight:600}.opts label:has(input:checked){background:#EBF5FE;border-color:var(--brand)}
+.cursive{font:30px/1.3 'Segoe Script','Brush Script MT','Lucida Handwriting','Snell Roundhand','Apple Chancery','URW Chancery L',cursive;min-height:42px;border-bottom:1px solid #aab6c3;margin:6px 0;padding:0 6px;color:#14231b}
+canvas{display:block;width:100%;max-width:520px;aspect-ratio:520/170;border:2px dashed #7c8da1;border-radius:8px;background:#fff;touch-action:none;cursor:crosshair}
+.consent{display:flex;gap:10px;align-items:flex-start;border:1px solid #BCC3CA;border-radius:10px;padding:12px;background:#F7F9FB;margin:14px 0;font-weight:600}.consent input{margin-top:5px;width:18px;height:18px}
+button{font:inherit;font-weight:700;border:0;border-radius:8px;background:var(--brand);color:#fff;padding:11px 20px;cursor:pointer}
+button.alt{background:#fff;color:var(--brand);border:1px solid var(--brand)}button.bad{background:#fff;color:var(--bad);border:1px solid var(--bad)}
+button:disabled{background:#B7C0C9;color:#fff;border-color:#B7C0C9;cursor:not-allowed}
+:focus-visible{outline:3px solid #0070F2;outline-offset:2px}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}.msg{font-weight:600}.err{color:var(--bad)}.ok{color:var(--good)}.small{font-size:13px;color:var(--sub)}
+.demo{display:none}
+@media(max-width:520px){main{padding:18px 12px 60px}h1{font-size:22px}dl{grid-template-columns:1fr}dt{margin-top:6px}}
+</style>
+</head>
+<body>
+<main id="m" aria-live="polite"><p>Loading…</p></main>
+<script>
+const q=new URLSearchParams(location.search),T=q.get('t'),API=(q.get('server')||location.origin).replace(/\/$/,'');
+const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+const size=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round((n||0)/1024))+' KB';
+let F=null,viewed=false,mode='typed',ink=false,busy=false,blob=null,declining=false;
+async function api(path,body){const r=await fetch(API+path,body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...body,t:T}),referrerPolicy:'no-referrer'}:{referrerPolicy:'no-referrer'});return{ok:r.ok,status:r.status,j:await r.json().catch(()=>({}))}}
+(async()=>{
+ if(!T){$('m').innerHTML='<h1>Sign a document</h1><p>This page needs the private link you were sent.</p>';return}
+ const r=await api('/api/sign/info?t='+encodeURIComponent(T));
+ if(!r.ok){$('m').innerHTML=`<h1>Sign a document</h1><p class="err" role="alert">${esc(r.j.error||'This link is not valid.')}</p>`;return}
+ F=r.j;draw()})();
+function head(){return `<h1>${esc(F.request.title)}</h1><p>${esc(F.request.purpose)} requested by <b>${esc(F.request.requestedBy)}</b>. Please reply by ${esc(F.request.due)}.</p><div class="legal" role="note"><b>What your signature means.</b> ${esc(F.legal)}</div>`}
+function draw(){
+ if(F.turn==='done'){$('m').innerHTML=`${head()}<div class="card"><b class="ok">${F.signer.status==='Declined'?'You declined this request.':'You have signed this document.'} Thank you.</b><p class="small" style="margin-top:8px">This link cannot be used again.</p></div>`;return}
+ if(F.turn==='closed'){$('m').innerHTML=`${head()}<div class="card"><b class="err">${esc(F.reason||'This request is closed.')}</b><p class="small" style="margin-top:8px">Ask ${esc(F.request.requestedBy)} if you think this is a mistake.</p></div>`;return}
+ const dc=F.doc||{};
+ const waiting=F.turn==='waiting';
+ $('m').innerHTML=`${head()}${F.request.message?`<div class="card"><p style="color:var(--ink);white-space:pre-wrap;margin:0">${esc(F.request.message)}</p></div>`:''}
+ <div class="card"><dl><dt>You are signing as</dt><dd><b>${esc(F.signer.name)}</b>, ${esc(F.signer.role.toLowerCase())}</dd><dt>Signing order</dt><dd>${esc(F.request.order)}</dd></dl>
+ ${waiting?`<p class="err" role="status" style="margin:0"><b>It is not your turn yet.</b> Waiting for ${esc(F.waitingFor.join(', '))}. You can use this same link later.</p>`:''}</div>
+ <h2 id="dh">Document</h2><div class="card" aria-labelledby="dh"><dl><dt>Name</dt><dd>${esc(dc.name||dc.title||'')}</dd><dt>Size</dt><dd>${esc(size(dc.size))}</dd><dt>Type</dt><dd>${esc(dc.type||'')}</dd><dt>SHA-256</dt><dd><code>${esc(dc.sha256||'')}</code></dd></dl>
+ ${waiting?'':`<div id="pv" aria-busy="true"><p class="small">Loading the document…</p></div><div class="bar"><button type="button" class="alt" id="dl">Download document</button></div><p class="small" id="rd" role="status" style="margin-top:8px"></p>`}</div>
+ ${waiting?'':`<h2 id="sh">Your signature</h2><div class="card" aria-labelledby="sh">
+ <div class="opts" role="radiogroup" aria-label="How do you want to sign"><label><input type="radio" name="md" value="typed" checked>Type my name</label><label><input type="radio" name="md" value="drawn">Draw my signature</label></div>
+ <div id="ty"><label for="tx">Type your full name exactly as shown: <b>${esc(F.signer.name)}</b></label><input type="text" id="tx" autocomplete="off" autocapitalize="off" spellcheck="false"><div class="cursive" id="tp" aria-hidden="true"></div></div>
+ <div id="dr" hidden><canvas id="cv" width="520" height="170" aria-label="Signature drawing area. If you cannot draw, choose Type my name instead." aria-describedby="cvh"></canvas><div class="bar"><button type="button" class="alt" id="clr">Clear</button></div><p class="small" id="cvh" style="margin-top:6px">Draw with your mouse, finger or stylus. Prefer to type, or cannot draw? Choose "Type my name"; it is equally valid.</p></div>
+ <label class="consent"><input type="checkbox" id="cs"><span>${esc(F.consent)}</span></label>
+ <p class="small" id="need" role="status"></p>
+ <div id="dcl" hidden><label for="rs">Why are you declining?</label><textarea id="rs" maxlength="300"></textarea></div>
+ <div class="bar"><button type="button" id="go" disabled aria-describedby="need">Sign</button><button type="button" class="bad" id="dc">Decline to sign</button><span class="msg" id="msg" role="alert"></span></div></div>`}`;
+ if(waiting)return;
+ bind();loadDoc()}
+async function loadDoc(){
+ const box=$('pv');box.removeAttribute('aria-busy');
+ let r;try{r=await fetch(API+'/api/sign/file?t='+encodeURIComponent(T),{referrerPolicy:'no-referrer'})}catch{box.innerHTML='<p class="err">The document could not be loaded.</p>';return}
+ if(!r.ok){const j=await r.json().catch(()=>({}));box.innerHTML=`<p class="err" role="alert">${esc(j.error||'The document could not be loaded.')}</p>`;$('go').disabled=true;return}
+ blob=await r.blob();const mime=String(F.doc.type||'').toLowerCase(),name=F.doc.name||'document';
+ const isTxt=/^text\/(?!html)|json|xml/.test(mime)||/\.(txt|md|csv)$/i.test(name),isImg=/^image\/(png|jpeg|gif|webp)$/.test(mime);
+ if(isTxt){const b=await blob.arrayBuffer(),big=b.byteLength>300000,pre=document.createElement('pre');pre.className='doc';pre.tabIndex=0;pre.setAttribute('role','region');pre.setAttribute('aria-label','Document text. Scroll to the end to continue.');pre.textContent=new TextDecoder().decode(b.slice(0,300000));
+  box.textContent='';box.appendChild(pre);if(big)box.insertAdjacentHTML('beforeend','<p class="small">Only the first part is shown. Download the document to read all of it.</p>');
+  const chk=()=>{if(!big&&pre.clientHeight>0&&pre.scrollTop+pre.clientHeight>=pre.scrollHeight-6)seen()};pre.addEventListener('scroll',chk);
+  $('rd').textContent='Scroll to the end of the document, or download it, to enable signing.';requestAnimationFrame(()=>requestAnimationFrame(chk))}
+ else if(isImg){const fr=new FileReader();fr.onload=()=>{const im=new Image();im.className='doc';im.alt='Document image: '+name;im.onload=seen;im.src=String(fr.result).replace(/^data:[^;]*;/,'data:'+mime+';');box.textContent='';box.appendChild(im)};fr.readAsDataURL(blob)}
+ else{box.innerHTML='<p class="small">A preview is not available for this file type.</p>';$('rd').textContent='Download the document and read it, then continue.'}
+ update()}
+function seen(){if(viewed)return;viewed=true;$('rd').textContent='Document viewed.';update()}
+function bind(){
+ $('dl').onclick=()=>{if(!blob)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([blob],{type:'application/octet-stream'}));a.download=(F.doc.name||'document').replace(/[^\w.\- ()]/g,'_');document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);seen()};
+ document.querySelectorAll('input[name=md]').forEach(i=>i.onchange=()=>{mode=i.value;$('ty').hidden=mode!=='typed';$('dr').hidden=mode!=='drawn';update()});
+ $('tx').oninput=update;$('cs').onchange=update;
+ const cv=$('cv'),cx=cv.getContext('2d');cx.lineWidth=2.6;cx.lineCap='round';cx.lineJoin='round';cx.strokeStyle='#14231b';let down=false,lx=0,ly=0;
+ const pos=e=>{const b=cv.getBoundingClientRect();return[(e.clientX-b.left)*cv.width/b.width,(e.clientY-b.top)*cv.height/b.height]};
+ cv.addEventListener('pointerdown',e=>{e.preventDefault();down=true;[lx,ly]=pos(e);try{cv.setPointerCapture(e.pointerId)}catch{}cx.beginPath();cx.arc(lx,ly,1.2,0,6.3);cx.fillStyle='#14231b';cx.fill();ink=true;update()});
+ cv.addEventListener('pointermove',e=>{if(!down)return;e.preventDefault();const[x,y]=pos(e);cx.beginPath();cx.moveTo(lx,ly);cx.lineTo(x,y);cx.stroke();lx=x;ly=y});
+ const up=()=>{down=false};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('pointerleave',up);
+ $('clr').onclick=()=>{cx.clearRect(0,0,cv.width,cv.height);ink=false;update()};
+ window.exportPng=()=>{for(const w of [360,260,180]){const o=document.createElement('canvas');o.width=w;o.height=Math.round(w*cv.height/cv.width);const c=o.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,o.width,o.height);c.drawImage(cv,0,0,o.width,o.height);const u=o.toDataURL('image/png');if(u.length<58000)return u}return ''};
+ $('go').onclick=()=>send('sign');
+ $('dc').onclick=()=>{if(!declining){declining=true;$('dcl').hidden=false;$('rs').focus();$('dc').textContent='Confirm decline';$('go').disabled=true;return}send('decline')};
+ update()}
+function update(){
+ if(!$('go'))return;const typedOk=norm($('tx').value)===norm(F.signer.name),ok=mode==='typed'?typedOk:ink,cons=$('cs').checked,need=[];
+ if(!viewed)need.push('open or scroll through the whole document');if(!ok)need.push(mode==='typed'?'type your name exactly as shown':'draw your signature');if(!cons)need.push('tick the consent box');
+ $('go').disabled=busy||declining||need.length>0;$('need').textContent=need.length?'Still needed: '+need.join('; ')+'.':'Ready to sign.';$('tp').textContent=mode==='typed'?$('tx').value:''}
+async function send(action){
+ const m=$('msg');m.className='msg';m.textContent='';
+ const body={action};
+ if(action==='sign'){Object.assign(body,{method:mode,typed:mode==='typed'?$('tx').value:'',image:mode==='drawn'?window.exportPng():'',consent:$('cs').checked})}
+ else{body.reason=$('rs').value;if(body.reason.trim().length<3){m.className='msg err';m.textContent='Give a reason for declining.';return}}
+ busy=true;update();$('dc').disabled=true;
+ const r=await api('/api/sign/submit',body);
+ if(!r.ok){busy=false;$('dc').disabled=false;m.className='msg err';m.textContent=r.j.error||'Could not record your response.';update();return}
+ $('m').innerHTML=`<h1>${action==='sign'?'Signed':'Response recorded'}</h1><div class="card"><b class="ok" role="status">${esc(r.j.message||'Thank you.')}</b><p class="small" style="margin-top:8px">${action==='sign'?'You can close this page. This link cannot be used again.':'You can close this page.'}</p></div><div class="legal" role="note">${esc(F.legal)}</div>`;window.scrollTo(0,0)}
+</script>
+</body>
+</html>
