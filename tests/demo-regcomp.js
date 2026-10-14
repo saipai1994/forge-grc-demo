@@ -240,7 +240,49 @@ await p.click('#view-regov .op-kpi:has-text("Open inspection findings")');await 
 ok('findings card drills to findings',/INS-/.test(await dbDrawerText()));await closeD();
 await nav('launchpad');await wait(()=>document.querySelectorAll('.fx-tile').length>5);ok('home still renders',true);
 
-// ------------------------------------------------ roles
+// ------------------------------------------------ other actions: ad hoc runs, status changes, replies, tests, uploads
+await drawer('filing','FIL-001');await p.click('#opDrawer [data-op="rg-run-adhoc"]');await formOpen();await fill({period:'Event-driven filing (test)',end:TODAY,due:'2026-12-31'});await submit();await formClosed();
+ok('ad hoc run added',await S(()=>GRC.S().regFilingRuns.some(r=>r.period==='Event-driven filing (test)'&&r.def==='FIL-001'&&r.due==='2026-12-31')));
+await closeD();await drawer('cal','CAL-001');await p.click('#opDrawer [data-op="rg-cal-done"]');await wait(()=>GRC.S().regCal.find(c=>c.id==='CAL-001').done);
+ok('calendar event marked done and shown as done',await S(()=>GRC.regcomp.calEvents().find(e=>e.ref==='CAL-001').state==='Done'));await closeD();
+await drawer('insp','INS-001');await p.click('#opDrawer [data-op="rg-insp-status"]');await formOpen();await fill({status:'Closed'});await submit();await p.waitForTimeout(250);
+ok('inspection cannot close with open findings',await S(()=>GRC.S().regInsp.find(i=>i.id==='INS-001').status==='In progress'));await p.click('#opForm [data-op="form-close"]');
+await p.click('#opDrawer [data-op="rg-req-upd"][data-sid="INS-001-R01"]');await formOpen();await fill({status:'Provided',note:''});await submit();await p.waitForTimeout(250);
+ok('request cannot be marked provided without a response',await S(()=>GRC.S().regInsp[0].requests[0].status!=='Provided'));
+await fill({note:'Sent by secure channel on request.'});await submit();await formClosed();
+ok('request marked provided with a note',await S(()=>GRC.S().regInsp[0].requests[0].status==='Provided'));
+await drawer('corr','COR-003');await p.click('#opDrawer [data-op="rg-cor-reply"]');await formOpen();await fill({respDue:''});await submit();await formClosed();
+ok('logging a response marks the inbound item responded',await S(()=>GRC.S().regCorr.find(c=>c.id==='COR-003').status==='Responded'&&GRC.S().regCorr.some(c=>c.replyTo==='COR-003'&&c.dir==='Outbound')));
+await drawer('breach','BRC-002');await p.click('#opDrawer [data-op="rg-brc-status"]');await formOpen();await fill({status:'Closed'});await submit();await p.waitForTimeout(250);
+ok('breach cannot close before the required notification',await S(()=>GRC.S().regBreach.find(b=>b.id==='BRC-002').status!=='Closed'));await p.click('#opForm [data-op="form-close"]');await closeD();
+const untested=await S(()=>GRC.S().obl.find(o=>o.status!=='Not applicable'&&!GRC.S().regTests.some(t=>t.ob===o.id)).id);
+await drawer('obligation',untested);await p.click('#opDrawer [data-op="rg-test-new"]');await formOpen();await fill({freq:'Quarterly',tester:'Sam Rivera',due:'2026-11-30'});await submit();await formClosed();
+ok('test scheduled from the obligation record',await S(o=>GRC.S().regTests.some(t=>t.ob===o&&t.freq==='Quarterly'&&t.tester==='Sam Rivera'),untested));
+await nav('regtest');await p.click('#opHead-regtest [data-op="rg-test-new"]');await formOpen();await fill({ob:untested});await submit();await p.waitForTimeout(250);
+ok('duplicate active test plan refused',(await S(o=>GRC.S().regTests.filter(t=>t.ob===o).length,untested))===1);await p.click('#opForm [data-op="form-close"]');
+const nT=await S(()=>GRC.S().regTests.length);await p.click('#opHead-regtest [data-op="rg-test-bulk"]');await wait(n=>GRC.S().regTests.length>n,nT);
+ok('bulk planning adds at most 20 tests',(await S(()=>GRC.S().regTests.length))-nT<=20);
+await drawer('regchange','RC-090');await p.click('#iaBox [data-op="rg-ia-unit"]');await formOpen();await fill({u:'Customer onboarding'});await submit();await formClosed();
+await drawer('regchange','RC-090');ok('process added to the assessment',/Customer onboarding/.test(await p.textContent('#iaBox')));
+await p.click('#iaBox [data-op="rg-ia-rm"][data-k="units"][data-v="Customer onboarding"]');await wait(()=>!GRC.S().regchg.find(r=>r.id==='RC-090').ia.links.units.includes('Customer onboarding'));
+ok('linked process removed',true);await p.click('#iaBox [data-op="rg-ia-task-add"]');await formOpen();await fill({text:'Update the outsourcing procedure',due:'2026-12-15'});await submit();await formClosed();
+await drawer('regchange','RC-090');await p.click('#iaBox [data-op="rg-ia-task"]');await formOpen();await fill({status:'Done'});await submit();await formClosed();
+ok('task added and updated',await S(()=>{const t=GRC.S().regchg.find(r=>r.id==='RC-090').ia.tasks;return t.length===1&&t[0].status==='Done'}));
+await nav('regcert');await tab('regcert','cyc');const cid=await S(()=>GRC.S().regCerts.find(c=>c.name==='Test certification cycle').id);
+await drawer('cert',cid);const [dl3]=await Promise.all([p.waitForEvent('download'),p.click('#opDrawer [data-op="rg-cyc-csv"]')]);
+ok('certification answers exported as CSV',/^"Item","Certifier"/.test(require('fs').readFileSync(await dl3.path(),'utf8')));
+await p.click('#opDrawer [data-op="rg-cyc-status"]');await wait(c=>GRC.S().regCerts.find(x=>x.id===c).status==='Closed',cid);ok('cycle closed',true);
+// upload a file from the user's computer into a correspondence record
+await drawer('corr','COR-002');await p.setInputFiles('#opDrawer input[data-rg-up]',{name:'reply-letter.txt',mimeType:'text/plain',buffer:Buffer.from('Reply letter to the regulator, test file.')});
+await wait(()=>GRC.S().regCorr.find(c=>c.id==='COR-002').docs.length>=2);
+const up=await S(()=>{const d=GRC.S().regCorr.find(c=>c.id==='COR-002').docs.slice(-1)[0];return{d,t:GRC.dms.doc(d).title,l:GRC.dms.doc(d).linked}});
+ok('uploaded file becomes a document linked to the record',up.t==='reply-letter'&&up.l.includes('COR-002'),up);
+await drawer('corr','COR-002');await p.click(`#opDrawer [data-op="rg-doc-detach"][data-doc="${up.d}"]`);await wait(d=>!GRC.S().regCorr.find(c=>c.id==='COR-002').docs.includes(d),up.d);
+ok('document detached',true);
+// Auditors are read-only
+await user('morgan');
+
+// ------------------------------------------------ errors
 await user('morgan');
 ok('no page errors in the main flow',errs.length===0,errs.slice(0,3));
 

@@ -15,7 +15,8 @@ for(let i=0;i<60;i++){try{const r=await fetch(U+'/api/health');if(r.ok)break}cat
 b=await chromium.launch({executablePath:process.env.CHROMIUM||undefined});
 async function open(email){const c=await b.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});const p=await c.newPage();p.on('pageerror',e=>errs.push(email+' '+e.message));p.on('console',m=>m.type()==='error'&&!/404|409|429|401/.test(m.text())&&errs.push(email+' '+m.text()));
  await p.goto(U+'/index.html#bfsi');await p.waitForSelector('#gcLogin');await p.fill('#gcEmail',email);await p.fill('#gcPw','forge-demo');await p.click('#gcLogin .go');await p.waitForSelector('#gcDot',{timeout:10000});
- await p.waitForFunction(()=>window.GRC&&GRC.api&&GRC.api.connected&&GRC.esign&&GRC.S().dmsDocs,null,{timeout:15000});return p}
+ await p.waitForFunction(()=>window.GRC&&GRC.api&&GRC.api.connected&&GRC.esign&&GRC.S().dmsDocs&&document.querySelector('.nav button[data-view="trail"]'),null,{timeout:20000}); // the audit-trail module is mounted after the first full load from the server
+ await p.waitForTimeout(600);return p}
 const A=await open('morgan@forge.demo');
 const db=()=>new DatabaseSync(path.join(DATA,'forge.db'));
 const serverState=()=>A.evaluate(async()=>{const r=await GRC.api.call('GET','/api/state?profile='+GRC.PROF);return r.data.state});
@@ -88,9 +89,9 @@ await E1.c.close();
 const doc2=await mkDoc('Lease renewal','Lease renewal terms. Rent is fixed for two years.');
 await waitServer((s,i)=>(s.dmsDocs||[]).some(d=>d.id===i),doc2);
 const id2=await mkReq(doc2,[{name:'Ann Partner',email:'ann@partner.example',internal:false,role:'Signer',order:1}],{title:'Sign the lease renewal'});
-const t2=(await issue(id2,'s1')).token;
+const i2=await issue(id2,'s1'),t2=i2.token;
 const fid=db().prepare('SELECT id,org FROM files WHERE ref=?').get(doc2);fs.appendFileSync(path.join(DATA,'files',fid.org,fid.id),'tampered');
-const E2=await ext(U+'/sign.html?t='+t2);await E2.p.waitForSelector('#m');await E2.p.waitForTimeout(500);
+const E2=await ext(U+'/sign.html?t='+t2);await E2.p.waitForSelector('#m');await E2.p.waitForTimeout(500);if(!(await E2.p.$('#pv')))console.log('DEBUG E2 page:',JSON.stringify((await E2.p.textContent('#m')).slice(0,300)),JSON.stringify(await info(t2)).slice(0,300),JSON.stringify(i2));
 ok('with the stored file replaced, the page cannot show the document',/no longer matches/.test(await E2.p.textContent('#pv'))&&await E2.p.isDisabled('#go'));
 const sub2=await submit(t2,{action:'sign',method:'typed',typed:'Ann Partner',consent:true});
 ok('signing refused when the stored bytes differ from the recorded checksum',sub2.status===409&&/no longer matches/.test(sub2.j.error),JSON.stringify(sub2));
@@ -104,7 +105,7 @@ const id3=await mkReq(doc3,[{name:'Ann Partner',email:'ann@partner.example',inte
 const t3=(await issue(id3,'s1')).token;const d3=db();d3.prepare("UPDATE sign_tokens SET expires='2026-10-11' WHERE req_id=?").run(id3);d3.close();
 const i3=await info(t3);ok('expired link refused with the generic message',i3.status===404&&/not valid or has expired/.test(i3.j.error));
 ok('expired link cannot sign or fetch the file',(await submit(t3,{action:'sign',method:'typed',typed:'Ann Partner',consent:true})).status===404&&(await fetch(U+'/api/sign/file?t='+t3)).status===404);
-const i3b=await issue(id3,'s1'),t3b=i3b.token;const i3c=await info(t3b);ok('a fresh link works',i3c.status===200,JSON.stringify([i3b,i3c.status,i3c.j]).slice(0,300));
+const i3b=await issue(id3,'s1'),t3b=i3b.token;const i3c=await info(t3b);ok('a fresh link works',i3c.status===200,JSON.stringify([i3b,i3c.status,i3c.j]).slice(0,300));if(i3c.status!==200){const ss=await serverState();console.log('DEBUG server',JSON.stringify((ss.esReq||[]).map(r=>[r.id,r.status])),'client',JSON.stringify(await A.evaluate(()=>GRC.esign.reqs().map(r=>[r.id,r.status]))),'id3',id3);const au=await A.evaluate(async()=>{const r=await GRC.api.call('GET','/api/audit?profile='+GRC.PROF+'&limit=40');return r.data.rows.map(x=>[x.user,x.action,x.rec,JSON.stringify(x.detail).slice(0,80)])});console.log(JSON.stringify(au))}
 
 // ---- decline through the page
 const E3=await ext(U+'/sign.html?t='+t3b);await E3.p.waitForSelector('#dc');
