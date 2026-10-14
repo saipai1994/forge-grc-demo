@@ -234,7 +234,11 @@ async function onDrawer(d){
 }
 const UIdrawerIs=d=>G.UI.drawer&&G.UI.drawer.id===d.id&&G.UI.drawer.type===d.type;
 G.drawerHooks.push(onDrawer);
-G.api={call:(m,u,b)=>call(m,u,b),get connected(){return connected},get user(){return user},get health(){return health}};
+G.api={call:(m,u,b)=>call(m,u,b),get connected(){return connected},get user(){return user},get health(){return health},
+ // files on the server, used by the document system (ref = a record or document id)
+ async upload(ref,blob,name){const r=await fetch(`${API}/api/files?profile=${encodeURIComponent(PROF)}&ref=${encodeURIComponent(ref)}&name=${encodeURIComponent(name)}`,{method:'POST',headers:{authorization:'Bearer '+token},body:blob});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'The file could not be saved.');return j},
+ async fetchFile(id){const r=await fetch(`${API}/api/files/${encodeURIComponent(id)}`,{headers:{authorization:'Bearer '+token}});return r.ok?await r.blob():null},
+ async removeFiles(ids){for(const id of ids)await call('DELETE','/api/files/'+encodeURIComponent(id))}};
 document.addEventListener('change',async e=>{if(e.target.id!=='gcUp'||!e.target.files[0])return;const f=e.target.files[0],d=G.UI.drawer;if(!d)return;
  if(f.size>10*1024*1024){toast('Files can be up to 10 MB.');return}
  const r=await fetch(`${API}/api/files?profile=${encodeURIComponent(PROF)}&ref=${encodeURIComponent(d.id)}&name=${encodeURIComponent(f.name)}`,{method:'POST',headers:{authorization:'Bearer '+token},body:f});
