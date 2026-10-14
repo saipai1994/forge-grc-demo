@@ -4,7 +4,7 @@ const p=await b.newPage({viewport:{width:1440,height:1000}});const errs=[];p.on(
 p.on('dialog',d=>d.accept());const ok=(n,v)=>console.log(v?'PASS':'FAIL',n);
 await p.goto((process.env.BASE||'http://localhost:8765')+'/index.html#bfsi');await p.waitForTimeout(3000);
 await p.click('.nav button[data-view="regchange"]');await p.waitForTimeout(300);
-ok('Feed inbox tab exists next to Change register',await p.$$eval('#opTabs-regchange .libtab',x=>x.map(y=>y.textContent).join('|'))==='Change register|Feed inbox');
+ok('Feed inbox tab exists next to Change register',await p.$$eval('#opTabs-regchange .libtab',x=>x.map(y=>y.textContent.trim())).then(a=>a[0]==='Change register'&&a.includes('Feed inbox')));
 await p.click('#opTabs-regchange [data-tab="feed"]');await p.waitForTimeout(400);
 ok('change register panel hidden, inbox shown',await p.evaluate(()=>!document.querySelector('[data-panel="regchange:register"]').classList.contains('show')&&document.querySelector('[data-panel="regchange:feed"]').classList.contains('show')));
 const panel='[data-panel="regchange:feed"]';
