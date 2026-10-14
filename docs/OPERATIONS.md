@@ -43,6 +43,20 @@ The temporary password is printed once; you must change it at first sign-in.
 | `FORGE_PUBLIC_ORG` | Organisation that receives anonymous speak-up reports (default `demo`; set to your `FORGE_ORG`) |
 | `FORGE_WEBHOOK_URL` | Slack or Teams incoming webhook that receives every notification |
 | `FORGE_MAIL_WEBHOOK` | Alternative to SMTP: a URL that receives `{to, subject, text}` for each notification |
+| `FORGE_FEED_SCHEDULER=0` | Turn off the background refresh of regulatory feeds (it checks every minute for feeds that are due). Manual "Refresh now" still works. |
+| `FORGE_FEED_ALLOW_HTTP=1` | Allow `http://` feed addresses. For tests only; feeds are https-only otherwise. |
+| `FORGE_FEED_ALLOW_PRIVATE=1` | Allow feeds on loopback, private, link-local and metadata addresses. For tests only; this switches off the SSRF guard. |
+
+## Regulatory feeds
+
+Administrators can watch regulator and law-firm feeds (RSS 2.0 or Atom) from **Regulatory change > Feed inbox > Sources**. The server fetches each feed on its own interval (15 minutes to 24 hours, default 6 hours), scores every new item for relevance to the frameworks your organisation has adopted, and lists them in the inbox. People can mark items triaged or dismissed, or convert one into a Regulatory change record (it is written through the same shared-state path as other edits, so it appears for everyone and is in the audit trail).
+
+- Up to 20 feeds per workspace. Only administrators add or remove feeds; auditors can read but not change items.
+- Safety: https only, 15 second timeout, 2 MB limit, at most 3 redirects, no DOCTYPE or entity processing, and feeds on private, loopback, link-local or cloud-metadata addresses are refused (checked on every redirect).
+- Relevance (0 to 100) is rule-based and explained on each item: framework code or name mentioned, issuer named, theme keywords (privacy, cyber, outsourcing, KYC and so on), generic regulatory words (circular, direction, amendment, deadline), plus a boost when you have adopted the matched framework. It is a triage aid, not a legal assessment.
+- Errors per feed (unreachable, not a feed, too large) show on the Sources tab and never affect the rest of the server.
+- `server/regfeed-sources.json` is a catalogue of suggested sources. Its addresses came from web searches and were not tested; confirm each works before relying on it. Several regulators publish no feed, so they are listed as web pages and need a feed address from you.
+- Feed data is stored in the `reg_feeds` and `reg_items` tables of the same database and is included in backups.
 
 ## Pages people use without signing in
 

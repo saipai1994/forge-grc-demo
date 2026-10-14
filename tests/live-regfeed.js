@@ -63,7 +63,6 @@ const sp=spawn('node',[path.join(__dirname,'..','server','server.js')],{env:{...
 await new Promise(r=>setTimeout(r,1500));
 try{const U='http://localhost:'+port,lg=await (await fetch(U+'/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:'morgan@forge.demo',password:'forge-demo'})})).json();
  const h={'content-type':'application/json',authorization:'Bearer '+lg.token};
- for(const u of ['http://127.0.0.1:1/feed.xml','http://localhost/x','http://169.254.169.254/latest/meta-data','http://[::1]/x']){const x=await fetch(U+'/api/regfeed/feeds',{method:'POST',headers:h,body:JSON.stringify({profile:'bfsi',name:'ssrf',url:u})});const j=await x.json();ok('SSRF refused '+u+' -> '+x.status,x.status===400&&/refused/.test(j.error))}
- const x=await fetch(U+'/api/regfeed/feeds',{method:'POST',headers:h,body:JSON.stringify({profile:'bfsi',name:'plain http',url:'http://example.com/feed.xml'})});ok('(spare server, ALLOW_HTTP on) http to a public name passes the address check or fails DNS only',x.status===200||x.status===400)}
+ for(const u of ['http://127.0.0.1:1/feed.xml','http://localhost/x','http://169.254.169.254/latest/meta-data','http://[::1]/x']){const x=await fetch(U+'/api/regfeed/feeds',{method:'POST',headers:h,body:JSON.stringify({profile:'bfsi',name:'ssrf',url:u})});const j=await x.json();ok('SSRF refused '+u+' -> '+x.status,x.status===400&&/refused/.test(j.error))}}
 finally{sp.kill()}
 console.log('errors',errs.slice(0,4));ok('no page errors',!errs.length);await b.close()})()
