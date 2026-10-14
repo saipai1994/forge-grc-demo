@@ -86,6 +86,7 @@ function renameFolder(id,name){const f=folder(id);if(!f)throw new Error('Folder 
 
 // ---------------------------------------------------------------- documents
 async function create(meta,src){
+ if(me().role==='Auditor')throw new Error('Auditors have read-only access to documents.');// fix: the core did not check the role on create
  meta=meta||{};const r=await readSource(src);const title=String(meta.title||r.name.replace(/\.[^.]+$/,'')).trim();if(!title)throw new Error('Give the document a title.');
  const type=TYPES.includes(meta.type)?meta.type:'Other',conf=CONF.includes(meta.conf)?meta.conf:'Internal';if(meta.folder&&!folder(meta.folder))throw new Error('Folder not found.');
  const d={id:nextId('doc','DOC-',4,coll('dmsDocs')),title:title.slice(0,140),type,folder:meta.folder||'',status:STATUSES.includes(meta.status)?meta.status:'Draft',owner:meta.owner||me().name,conf,tags:[...new Set((meta.tags||[]).map(t=>String(t).trim().toLowerCase()).filter(Boolean))].slice(0,12),linked:[...new Set(meta.linked||[])],desc:String(meta.desc||'').slice(0,500),
@@ -101,7 +102,10 @@ async function addVersion(id,src,note){
 async function bytes(id,n){
  const d=find(id),v=ver(d,n);if(!v)return null;
  if(v.fileId){const b=await G.api.fetchFile(v.fileId);return b?new Uint8Array(await b.arrayBuffer()):null}
- const r=await localGet(bkey(id,v.n));return r?new Uint8Array(r.bytes):null}
+ const r=await localGet(bkey(id,v.n));if(r)return new Uint8Array(r.bytes);
+ // fix: seeded sample documents carry their text in d.seed but no stored bytes; serve it (the checksum was computed from it)
+ if(v.n===1&&typeof d.seed==='string'){const u=utf8(d.seed);return u}
+ return null}
 async function blob(id,n){const b=await bytes(id,n),v=ver(find(id),n);return b?new Blob([b],{type:(v&&v.mime)||'application/octet-stream'}):null}
 async function text(id,n){const b=await bytes(id,n),v=ver(find(id),n);if(!b||!v)return '';const ok=/^text\/|json|xml/.test(v.mime||'')||/\.(txt|md|csv|html?)$/i.test(v.name||'');return ok?new TextDecoder().decode(b):''}
 async function verify(id,n){const d=find(id),v=ver(d,n);if(!v)return{ok:false,reason:'No such version'};const b=await bytes(id,n);if(!b)return{ok:false,reason:'The stored file could not be found'};const s=await sha256(b);return{ok:s===v.sha,expected:v.sha,actual:s,reason:s===v.sha?'':'The stored file no longer matches the recorded checksum'}}
@@ -131,7 +135,9 @@ async function dispose(id){if(!isAdmin())throw new Error('Only an administrator 
  if(live()&&G.api.removeFiles)try{await G.api.removeFiles(d.versions.map(v=>v.fileId).filter(Boolean))}catch{}
  coll('dmsDocs').splice(coll('dmsDocs').indexOf(d),1);logIt('DOC',`Document disposed: ${d.id} ${d.title}`);commit()}
 async function remove(id){const d=find(id);if(!d)return;if(!isAdmin()&&d.owner!==me().name)throw new Error('Only the owner or an administrator can delete a document.');if(d.retention.hold)throw new Error('This document is on legal hold.');if(d.sig)throw new Error('Signed documents cannot be deleted.');
- for(const v of d.versions){if(!v.fileId)await localDel(bkey(d.id,v.n))}coll('dmsDocs').splice(coll('dmsDocs').indexOf(d),1);logIt('DOC',`Document deleted: ${d.id} ${d.title}`);commit()}
+ for(const v of d.versions){if(!v.fileId)await localDel(bkey(d.id,v.n))}
+ if(live()&&G.api.removeFiles)try{await G.api.removeFiles(d.versions.map(v=>v.fileId).filter(Boolean))}catch{}// fix: do not leave orphan files on the server
+ coll('dmsDocs').splice(coll('dmsDocs').indexOf(d),1);logIt('DOC',`Document deleted: ${d.id} ${d.title}`);commit()}
 
 // ---------------------------------------------------------------- links and search
 function link(id,rec){const d=find(id);if(!d)throw new Error('Document not found.');if(!rec)return d;if(!d.linked.includes(rec)){d.linked.push(rec);logIt('DOC',`Linked ${d.id} to ${rec}`);commit()}return d}
