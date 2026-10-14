@@ -20,7 +20,7 @@ async function open(email){const c=await b.newContext({viewport:{width:1440,heig
 const A=await open('morgan@forge.demo');
 const db=()=>new DatabaseSync(path.join(DATA,'forge.db'));
 const serverState=()=>A.evaluate(async()=>{const r=await GRC.api.call('GET','/api/state?profile='+GRC.PROF);return r.data.state});
-const waitServer=(fn,arg)=>A.waitForFunction(async([f,a])=>{const r=await GRC.api.call('GET','/api/state?profile='+GRC.PROF);return !!(r.data.state&&eval('('+f+')')(r.data.state,a))},[fn.toString(),arg],{timeout:12000,polling:300});
+const waitServer=async(fn,arg)=>{for(let i=0;i<50;i++){const st=await serverState();if(st&&fn(st,arg))return;await new Promise(r=>setTimeout(r,300))}throw new Error('server never reached the expected state: '+fn)};
 const mkDoc=(title,text)=>A.evaluate(async([t,x])=>{const d=await GRC.dms.create({title:t,type:'Contract'},{text:x,name:t.replace(/\W+/g,'-').toLowerCase()+'.txt'});return d.id},[title,text]);
 const mkReq=async(doc,signers,o)=>{const id=await A.evaluate(async([doc,signers,o])=>{const r=await GRC.esign.create(doc,signers,o||{});GRC.esign.send(r.id);return r.id},[doc,signers,o]);await waitServer((s,i)=>(s.esReq||[]).some(r=>r.id===i&&r.status==='Out for signature'),id);return id};
 const issue=(req,signer)=>A.evaluate(async([req,signer])=>{for(let i=0;i<10;i++){const r=await GRC.api.call('POST','/api/sign/issue',{profile:GRC.PROF,req,signer});if(r.ok)return r.data;if(r.status!==404)return{error:r.data.error,status:r.status};await new Promise(o=>setTimeout(o,500))}return{error:'timeout'}},[req,signer]);
