@@ -17,7 +17,8 @@ function startServer(port,extra){const data=fs.mkdtempSync(path.join(os.tmpdir()
   if(f==='live-sso-mfa.js'){report(f,await run(f,{}));continue}
   const p0=port++;let extra={},stub=null;
   if(f==='live-assistant.js'){const sp=port++;stub=spawn('node',[path.join(__dirname,'stubllm.js')],{env:{...process.env,PORT:String(sp),LLM_LOG:path.join(os.tmpdir(),'llm-last.json')},stdio:'ignore'});extra={ANTHROPIC_API_KEY:'sk-test',FORGE_LLM_URL:'http://localhost:'+sp};await new Promise(r=>setTimeout(r,500))}
+  let fenv={};if(f==='live-regfeed.js'){const sp=port++;stub=spawn('node',[path.join(__dirname,'stubfeed.js')],{env:{...process.env,PORT:String(sp)},stdio:'ignore'});extra={FORGE_FEED_ALLOW_HTTP:'1',FORGE_FEED_ALLOW_PRIVATE:'1',FORGE_FEED_SCHEDULER:'0'};fenv={STUB:'http://127.0.0.1:'+sp,SPARE_PORT:String(port++)};await new Promise(r=>setTimeout(r,500))}
   const srv=await startServer(p0,extra);
-  report(f,await run(f,{BASE,SERVER:'http://localhost:'+p0,LLM_LOG:path.join(os.tmpdir(),'llm-last.json')}));
+  report(f,await run(f,{BASE,SERVER:'http://localhost:'+p0,LLM_LOG:path.join(os.tmpdir(),'llm-last.json'),...fenv}));
   srv.kill();if(stub)stub.kill()}
  const bad=results.filter(r=>!r[1]).length;console.log(`\n${results.length-bad} of ${results.length} browser tests passed`);st.close();process.exit(bad?1:0)})();

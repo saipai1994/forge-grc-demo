@@ -11,7 +11,7 @@
     "start": "node server/server.js",
     "demo": "FORGE_TODAY=2026-10-12 node server/server.js",
     "feed": "node server/feed-sim.js",
-    "test": "node server/test.js && node server/test-mail.js && node server/test-oidc.js",
+    "test": "node server/test.js && node server/test-mail.js && node server/test-oidc.js && node server/test-regfeed.js",
     "test:browser": "node tests/run.js"
   },
   "devDependencies": {

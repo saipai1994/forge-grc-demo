@@ -10,6 +10,7 @@ const MFA=require('./mfa.js');
 const MAIL=require('./mail.js');
 const SCAN=require('./scan.js');
 const OIDC=require('./oidc.js');
+const REGFEED=require('./regfeed.js'); // regulatory feed ingestion (see server/regfeed.js)
 
 const PORT=+process.env.PORT||8080,ROOT=path.join(__dirname,'..'),DATA=process.env.FORGE_DATA||path.join(ROOT,'data');
 const INGEST_KEY=process.env.FORGE_INGEST_KEY||'dev-ingest-key';
@@ -174,6 +175,9 @@ function ingestKri(org,profile,body){
  return{status:200,rev:out.rev,value:v,status_after:v>=k.red?'Red':v>=k.amber?'Amber':'Green',issue_raised:ops.length>1};
 }
 
+// ---- regfeed: tables (reg_feeds, reg_items) are created by REGFEED.init; it reuses applyOps so converted items sync like any edit ----
+REGFEED.init({db,getDoc,applyOps,logA,broadcast,send:(res,code,obj)=>send(res,code,obj),readBody:req=>readBody(req),okProfile,today});
+
 // ---- http ----
 const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css','.json':'application/json','.png':'image/png','.svg':'image/svg+xml','.ico':'image/x-icon','.md':'text/markdown'};
 const send=(res,code,obj)=>{const b=JSON.stringify(obj);res.writeHead(code,{'content-type':'application/json','cache-control':'no-store'});res.end(b)};
@@ -251,6 +255,7 @@ async function api(req,res,url){
     broadcast(user.org,'*',{type:'people'});return send(res,200,{ok:true})}}
   return send(res,404,{error:'Not found'});
  }
+ if(p.startsWith('/api/regfeed/'))return REGFEED.route(req,res,url,user); // regulatory feeds: any signed-in user; admin checks are inside
  if(p==='/api/vq/issue'&&req.method==='POST')return vqIssue(req,res,user);
  if(p==='/api/assistant'&&req.method==='POST')return assistant(req,res,user);
  if(p.startsWith('/api/speakup'))return speakupStaff(req,res,url,p,user);
@@ -473,6 +478,6 @@ const server=http.createServer((req,res)=>{
 });
 function backup(){try{const dir=path.join(DATA,'backups');fs.mkdirSync(dir,{recursive:true});const f=path.join(dir,'forge-'+new Date().toISOString().replace(/[:.]/g,'-')+'.db');db.exec(`VACUUM INTO '${f.replace(/'/g,"''")}'`);
  fs.readdirSync(dir).filter(x=>x.endsWith('.db')).sort().slice(0,-14).forEach(x=>fs.unlinkSync(path.join(dir,x)));return f}catch(e){console.error('backup failed',e.message)}}
-if(require.main===module){setTimeout(sweep,4000);setInterval(sweep,3600e3);if(process.env.FORGE_BACKUP!=='0'){setTimeout(backup,8000);setInterval(backup,24*3600e3)}}
+if(require.main===module){REGFEED.startScheduler();setTimeout(sweep,4000);setInterval(sweep,3600e3);if(process.env.FORGE_BACKUP!=='0'){setTimeout(backup,8000);setInterval(backup,24*3600e3)}}
 if(require.main===module)server.listen(PORT,()=>console.log(`Forge GRC running at http://localhost:${PORT}  (data: ${DATA})`));
 module.exports={server,db,backup,sweep};
