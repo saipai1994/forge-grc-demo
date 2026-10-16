@@ -94,3 +94,10 @@ What a new customer gets: an Organisation module (company profile, legal entitie
 - **Sign-in options** (`server/`): password, authenticator-app two-step, and OpenID Connect single sign-on. See `docs/OPERATIONS.md` for settings.
 
 Run the checks with `npm test` (server), `npm run test:browser` (needs `npx playwright install chromium`) and `node tests/a11y.js`.
+
+## Documents, e-signature, policies and regulatory compliance
+
+- **Documents** (`dms-core.js`, `dms.js`): folders, versions with SHA-256 checks, retention and legal hold, activity log, links to any record, global search. In connected mode files are stored on the server (virus scan optional, 10 MB limit, extension allow-list).
+- **E-signature** (`esign-core.js`, `esign.js`, `sign.html`, `server/esign.js`): signature requests with ordered or parallel signers, typed or drawn signatures, decline and expiry, reminders, a tamper-evident seal and certificate, and one-time links for outside signers. This is a simple electronic signature with an audit trail. It is not Aadhaar eSign, a digital signature certificate or a qualified signature; confirm it is legally sufficient for each use.
+- **Policy management** (`policy-plus.js`, `policy-templates.js`): lifecycle, hierarchy, review cycle, attestation campaigns, coverage gaps, 40 starter templates, approval and publishing through e-signature and documents.
+- **Regulatory compliance** (`regcomp-plus.js`, `regfeed.js`, `server/regfeed.js`): regulatory feed inbox (RSS/Atom, server-side fetch with address checks, relevance scoring), impact assessments, calendar, filings and returns, inspections, certifications. Suggested feed sources in `server/regfeed-sources.json` are unverified; confirm each before relying on it.
