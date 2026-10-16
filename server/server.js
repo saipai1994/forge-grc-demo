@@ -11,6 +11,7 @@ const MAIL=require('./mail.js');
 const SCAN=require('./scan.js');
 const OIDC=require('./oidc.js');
 const REGFEED=require('./regfeed.js'); // regulatory feed ingestion (see server/regfeed.js)
+const CONF=require('./confidential.js'); // Restricted documents: who may see them (see server/confidential.js)
 const ESIGN=require('./esign.js'); // e-signature: external signing links, public signing endpoints, gate on esReq (see server/esign.js)
 
 const PORT=+process.env.PORT||8080,ROOT=path.join(__dirname,'..'),DATA=process.env.FORGE_DATA||path.join(ROOT,'data');
@@ -100,6 +101,7 @@ function note(org,profile,n){
  else setSt('queued (no mail relay configured)');
  return rec}
 function onChange(org,profile,op,res,user){
+ reminderNotes(org,profile,op,res,user);campaignReminders(org,profile,op,res,user);esignReminders(org,profile,op,res,user);
  if(op.p.join('.')==='issues'&&op.op==='put'){const r=op.rec;
   if(r.owner&&r.owner!==user.name&&(res.kind==='create'||(res.before&&res.before.owner!==r.owner)))note(org,profile,{kind:'assigned',title:`Issue ${r.id} assigned to you`,body:`${r.title} (${r.sev}, due ${r.due}) · by ${user.name}`,ref:r.id,who:r.owner})}
  const tp=op.p.join('.'),ac=APPROVALS[tp];
@@ -108,6 +110,35 @@ function onChange(org,profile,op,res,user){
   if(ex&&ac.from.includes(ex.status)&&!ac.from.includes(r.status)&&req&&req!==user.name)note(org,profile,{kind:'approval',title:`${label} ${r.id} ${String(r.status).toLowerCase()}`,body:`Decided by ${user.name}${r.comment?': '+r.comment:''}`,ref:r.id,who:req})}
  if(op.p.join('.')==='kris'&&op.op==='put'){const k=op.rec,v=k.series[k.series.length-1],pv=res.before&&res.before.series[res.before.series.length-1];
   if(v>=k.red&&!(pv>=k.red))note(org,profile,{kind:'breach',title:`Indicator ${k.id} is in red`,body:`${k.name}: ${v}${k.unit==='%'?'%':''} (red at ${k.red})`,ref:k.id,who:k.owner})}}
+// Reminders. The browser records a reminder on the record (policy.rem, campaign.reminders, an e-sign 'reminder' event);
+// here each new one becomes a real notification: in-app bell, chat webhook and email, through note(). Only the person who
+// owns the record (or an administrator) can trigger them, and people are taken from the stored record, not from the request.
+function reminderNotes(org,profile,op,res,user){
+ if(op.op!=='put'||!op.rec||!res.before)return;const r=op.rec,ex=res.before,tp=op.p.join('.'),admin=user.role==='Administrator',nm=user.name;
+ if(tp==='policies'){
+  if(!(admin||ex.owner===nm)||!r.owner||r.owner===nm)return;
+  const fresh=(Array.isArray(r.rem)?r.rem:[]).slice((Array.isArray(ex.rem)?ex.rem:[]).length);
+  fresh.slice(-1).forEach(m=>note(org,profile,{kind:'reminder',title:`Review due: ${r.title}`,body:`${r.id} is due for review ${r.review||''} · reminder from ${nm}`,ref:r.id,who:r.owner,dedupe:`polrem:${r.id}:${String(m&&m.ts||Date.now())}`}));return}
+}
+function campaignReminders(org,profile,op,res,user){
+ if(op.op!=='put'||op.p.join('.')!=='policies'||!op.rec||!res.before)return;const r=op.rec,ex=res.before;
+ if(!(user.role==='Administrator'||ex.owner===user.name))return;
+ for(const c of (Array.isArray(r.camps)?r.camps:[])){
+  const oc=(Array.isArray(ex.camps)?ex.camps:[]).find(x=>x.id===c.id);if(!oc||c.status!=='Open')continue;
+  const fresh=(Array.isArray(c.reminders)?c.reminders:[]).slice((Array.isArray(oc.reminders)?oc.reminders:[]).length);
+  for(const m of fresh.slice(-1)){
+   const to=new Set(Array.isArray(m&&m.to)?m.to:[]);
+   (Array.isArray(c.people)?c.people:[]).filter(x=>x&&x.status==='Pending'&&to.has(x.name)&&x.name!==user.name).slice(0,500).forEach(x=>
+    note(org,profile,{kind:'reminder',title:`Please attest: ${r.title}`,body:`${c.id} · due ${c.due||''} · reminder from ${user.name}`,ref:r.id,who:x.name,dedupe:`attrem:${c.id}:${String(m.ts||Date.now())}:${x.name}`}))}}}
+function esignReminders(org,profile,op,res,user){
+ if(op.op!=='put'||op.p.join('.')!=='esReq'||!op.rec||!res.before)return;const r=op.rec,ex=res.before;
+ if(r.status!=='Out for signature'||!(user.role==='Administrator'||ex.createdBy===user.name))return;
+ const fresh=(Array.isArray(r.events)?r.events:[]).slice((Array.isArray(ex.events)?ex.events:[]).length).filter(e=>e&&e.action==='reminder');
+ for(const e of fresh.slice(-1))for(const s of ESIGN.pendingNow(r)){
+  const key=`esrem:${r.id}:${s.id}:${String(e.ts||Date.now())}`;
+  if(s.internal){if(s.name!==user.name)note(org,profile,{kind:'reminder',title:`${r.id} needs your signature`,body:`${r.title} · reminder from ${user.name}`,ref:r.id,who:s.name,dedupe:key})}
+  else if(s.email&&MAIL.configured()) // outside signers have no account: email only, and never the link (it is a secret that is not stored)
+   MAIL.send({to:s.email,subject:'Reminder: signature requested for '+r.title,text:`${user.name} reminds you to review and sign "${r.title}". Please use the private signing link you were sent, or ask ${user.name} for a new one.`}).catch(e2=>console.error('reminder mail failed:',e2.message))}}
 const addDaysISO=(iso,n)=>{const d=new Date(iso+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
 function sweep(){ // overdue items, once per day per record
  const t=today();for(const d of db.prepare('SELECT org,profile,json FROM docs').all()){let st;try{st=JSON.parse(d.json)}catch{continue}
@@ -119,28 +150,34 @@ function sweep(){ // overdue items, once per day per record
 
 // ---- live updates (server-sent events) ----
 const clients=new Set();
+// Each connected person hears only about the changes they are allowed to see (Restricted documents are filtered per person).
+function broadcastOps(org,profile,head,ops,befores,st){
+ for(const c of clients)if(c.org===org&&c.profile===profile){
+  const mine=ops.map((o,i)=>CONF.opForUser(o,befores[i],st,c.user)).filter(Boolean);
+  if(mine.length)try{c.res.write(`data: ${JSON.stringify({...head,ops:mine})}\n\n`)}catch{}}}
 function broadcast(org,profile,msg){const data=`data: ${JSON.stringify(msg)}\n\n`;for(const c of clients)if(c.org===org&&(profile==='*'||c.profile===profile))try{c.res.write(data)}catch{}}
 
 // Apply operations from a user to the stored state. Returns the operations that actually changed something.
 function applyOps(org,profile,user,ops,source){
  const doc=getDoc(org,profile);if(!doc)return{error:'No data for this profile yet',status:404};
- const st=doc.state,applied=[],denied=[],renames={};const rev=doc.rev+1;
+ const st=doc.state,applied=[],befores=[],denied=[],renames={};const rev=doc.rev+1;
  for(const raw of ops){
   const op={...raw};if(!Array.isArray(op.p)||!op.p.length||!['put','del','set','unset'].includes(op.op))continue;
   if(!allowed(user.role,op)){denied.push(op);continue}
   // two people creating a record at the same moment can pick the same number: give the newer one the next free number
   if(op.op==='put'&&op.isNew){const arr=SYNC_get(st,op.p);if(arr&&arr.some(x=>x.id===op.id)){const m=/^(.*?)(\d+)$/.exec(op.id);if(m){const used=arr.map(x=>x.id).filter(i=>i.startsWith(m[1])).map(i=>+i.slice(m[1].length)||0);const nid=m[1]+String(Math.max(...used)+1).padStart(m[2].length,'0');renames[op.id]=nid;op.rec={...op.rec,id:nid};op.id=nid}}}
   if(op.op==='put'&&!op.isNew&&Array.isArray(op.ch)){const arr0=SYNC_get(st,op.p),ex=arr0&&arr0.find(x=>x.id===op.id);if(ex){const m={...ex};op.ch.forEach(f=>{if(f in op.rec)m[f]=op.rec[f];else delete m[f]});op.rec=m}}
+  if(!CONF.opAllowed(st,op,user)){denied.push(op);continue} // Restricted documents (and their signature requests) are off limits to people who cannot see them
   const gate=approvalGate(st,op,user);if(gate){denied.push(op);continue}
   if(ESIGN.gate(st,op,user,today())){denied.push(op);continue} // e-signature: nobody signs for someone else, sealed fields are frozen
   const res=SYNC.apply(st,op);if(!res)continue;
-  applied.push(op);try{onChange(org,profile,op,res,user)}catch(e){console.error('notify',e.message)}
+  applied.push(op);befores.push(res.before);try{onChange(org,profile,op,res,user)}catch(e){console.error('notify',e.message)}
   const coll=op.p.join('.');
   if(op.op==='put')logA(org,profile,rev,user.name,user.label||user.role,coll,op.id,res.kind==='create'?'created':'updated',res.kind==='create'?{title:op.rec.title||op.rec.name||op.rec.id}:SYNC.fieldChanges(res.before,op.rec));
   else if(op.op==='del')logA(org,profile,rev,user.name,user.label||user.role,coll,op.id,'deleted',{title:(res.before&&(res.before.title||res.before.name))||op.id});
   else logA(org,profile,rev,user.name,user.label||user.role,coll,null,'changed',{from:null,to:op.v===undefined?'removed':String(JSON.stringify(op.v)).slice(0,80)});
  }
- if(applied.length){putDoc(org,profile,rev,st);broadcast(org,profile,{type:'ops',rev,by:{name:user.name,role:user.role,source:source||'user'},ops:applied})}
+ if(applied.length){putDoc(org,profile,rev,st);broadcastOps(org,profile,{type:'ops',rev,by:{name:user.name,role:user.role,source:source||'user'}},applied,befores,st)}
  return{rev:applied.length?rev:doc.rev,applied,denied,renames,seq:st.seq};
 }
 // Approval decisions can only be made by the named approver or an administrator, never by the requester.
@@ -196,6 +233,11 @@ function pwProblem(pw,u){if(typeof pw!=='string'||pw.length<10)return 'Use at le
 const tempPw=()=>crypto.randomBytes(9).toString('base64url');
 const FILE_OK=new Set(['pdf','png','jpg','jpeg','docx','xlsx','csv','txt','pptx','msg','eml']);
 const FILES_DIR=path.join(DATA,'files');
+
+// Files follow the confidentiality of the document (or signature request) they belong to.
+function refAllowed(user,profile,ref){
+ if(user.role==='Administrator'||!/^(DOC|SIG)-/.test(String(ref||'')))return true;
+ const d=getDoc(user.org,profile);return !d||CONF.canSeeRef(d.state,ref,user)}
 
 async function api(req,res,url){
  const p=url.pathname;
@@ -278,7 +320,7 @@ async function api(req,res,url){
   if(user.role==='Auditor'&&/^DOC-/.test(url.searchParams.get('ref')||''))return send(res,403,{error:'Auditors have read-only access to documents.'}); // document files (ref DOC-xxxx)
   if(!okProfile(profile))return send(res,400,{error:'Bad profile'});
   const ref=(url.searchParams.get('ref')||'').slice(0,40),name=path.basename(url.searchParams.get('name')||'').replace(/[^\w.\- ()]/g,'_').slice(0,120),ext=path.extname(name).slice(1).toLowerCase();
-  if(!ref||!name)return send(res,400,{error:'Name and record are required'});if(!FILE_OK.has(ext))return send(res,400,{error:'This file type is not accepted. Allowed: '+[...FILE_OK].join(', ')});
+  if(!ref||!name)return send(res,400,{error:'Name and record are required'});if(!refAllowed(user,profile,ref))return send(res,403,{error:'You do not have access to this document.'});if(!FILE_OK.has(ext))return send(res,400,{error:'This file type is not accepted. Allowed: '+[...FILE_OK].join(', ')});
   let buf;try{buf=await readRaw(req,10*1024*1024)}catch{return send(res,413,{error:'Files can be up to 10 MB.'})}if(!buf.length)return send(res,400,{error:'The file is empty.'});
   if(SCAN.configured()){let r;try{r=await SCAN.scan(buf)}catch(e){console.error('scan failed:',e.message);if(process.env.FORGE_SCAN_FAILOPEN!=='1'){logA(user.org,profile,null,user.name,user.role,'files',ref,'file refused',{title:name,reason:'could not be scanned'});return send(res,503,{error:'The file could not be checked for viruses, so it was not saved. Try again shortly.'})}}
    if(r&&!r.clean){logA(user.org,profile,null,user.name,user.role,'files',ref,'file blocked',{title:name,reason:'virus found',signature:r.signature});return send(res,422,{error:'This file was blocked because it appears to contain malware ('+r.signature+').'})}}
@@ -286,17 +328,17 @@ async function api(req,res,url){
   const sha=crypto.createHash('sha256').update(buf).digest('hex');db.prepare('INSERT INTO files VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,user.org,profile,ref,name,buf.length,ext,user.name,new Date().toISOString(),sha);
   logA(user.org,profile,null,user.name,user.role,'files',ref,'file added',{title:name,sha256:sha.slice(0,16)});broadcast(user.org,profile,{type:'files',ref});return send(res,200,{id,name,size:buf.length});
  }
- if(p==='/api/files'&&req.method==='GET'){const ref=url.searchParams.get('ref')||'';return send(res,200,{files:db.prepare('SELECT id,name,size,type,by,ts,sha FROM files WHERE org=? AND profile=? AND ref=? ORDER BY ts DESC').all(user.org,profile,ref)})}
+ if(p==='/api/files'&&req.method==='GET'){const ref=url.searchParams.get('ref')||'';if(!refAllowed(user,profile,ref))return send(res,200,{files:[]});return send(res,200,{files:db.prepare('SELECT id,name,size,type,by,ts,sha FROM files WHERE org=? AND profile=? AND ref=? ORDER BY ts DESC').all(user.org,profile,ref)})}
  const fm=/^\/api\/files\/([0-9a-f-]{36})$/.exec(p);
- if(fm){const f=db.prepare('SELECT * FROM files WHERE id=? AND org=?').get(fm[1],user.org);if(!f)return send(res,404,{error:'No such file'});
+ if(fm){const f=db.prepare('SELECT * FROM files WHERE id=? AND org=?').get(fm[1],user.org);if(!f||!refAllowed(user,f.profile,f.ref))return send(res,404,{error:'No such file'});
   if(req.method==='DELETE'){if(user.role==='Auditor'||user.role==='Function user')return send(res,403,{error:'Not permitted'});try{fs.unlinkSync(path.join(FILES_DIR,user.org,f.id))}catch{}db.prepare('DELETE FROM files WHERE id=?').run(f.id);logA(user.org,f.profile,null,user.name,user.role,'files',f.ref,'file removed',{title:f.name});broadcast(user.org,f.profile,{type:'files',ref:f.ref});return send(res,200,{ok:true})}
   logA(user.org,f.profile,null,user.name,user.role,'files',f.ref,'file opened',{title:f.name});
   res.writeHead(200,{'content-type':'application/octet-stream','content-disposition':'attachment; filename="'+f.name.replace(/"/g,'')+'"','x-content-type-options':'nosniff','cache-control':'no-store'});return fs.createReadStream(path.join(FILES_DIR,user.org,f.id)).pipe(res)}
- if(p==='/api/state'&&req.method==='GET'){if(!okProfile(profile))return send(res,400,{error:'Bad profile'});const d=getDoc(user.org,profile);return send(res,200,d?{rev:d.rev,state:d.state}:{rev:0,state:null})}
+ if(p==='/api/state'&&req.method==='GET'){if(!okProfile(profile))return send(res,400,{error:'Bad profile'});const d=getDoc(user.org,profile);return send(res,200,d?{rev:d.rev,state:CONF.filterState(d.state,user)}:{rev:0,state:null})}
  if(p==='/api/init'&&req.method==='POST'){
   const b=await readBody(req);if(!okProfile(b.profile))return send(res,400,{error:'Bad profile'});
   if(user.role!=='Administrator'&&user.role!=='Business user')return send(res,403,{error:'Ask an administrator to start this workspace.'});
-  const ex=getDoc(user.org,b.profile);if(ex)return send(res,200,{rev:ex.rev,state:ex.state});
+  const ex=getDoc(user.org,b.profile);if(ex)return send(res,200,{rev:ex.rev,state:CONF.filterState(ex.state,user)});
   if(!b.state||typeof b.state!=='object')return send(res,400,{error:'state required'});
   delete b.state.log;putDoc(user.org,b.profile,1,b.state);logA(user.org,b.profile,1,user.name,user.role,'workspace',null,'created',{profile:b.profile});return send(res,200,{rev:1,state:b.state});
  }
@@ -309,13 +351,14 @@ async function api(req,res,url){
   if(!okProfile(profile))return send(res,400,{error:'Bad profile'});
   const lim=Math.min(+url.searchParams.get('limit')||200,1000),q=(url.searchParams.get('q')||'').toLowerCase();
   let rows=db.prepare('SELECT id,ts,user,role,coll,rec,action,detail,rev FROM audit WHERE org=? AND (profile=? OR profile=\'-\') ORDER BY id DESC LIMIT ?').all(user.org,profile,lim*(q?5:1)).map(r=>({...r,detail:r.detail?JSON.parse(r.detail):null}));
+  if(user.role!=='Administrator'){const d=getDoc(user.org,profile);if(d)rows=rows.filter(r=>CONF.auditRowVisible(r,d.state,user))} // rows about Restricted documents are hidden with them
   if(q)rows=rows.filter(r=>(r.user+' '+r.coll+' '+r.rec+' '+r.action+' '+JSON.stringify(r.detail)).toLowerCase().includes(q)).slice(0,lim);
   return send(res,200,{rows});
  }
  if(p==='/api/events'){
   if(!okProfile(profile))return send(res,400,{error:'Bad profile'});
   res.writeHead(200,{'content-type':'text/event-stream','cache-control':'no-store',connection:'keep-alive'});res.write('retry: 2000\n\n');
-  const c={res,org:user.org,profile};clients.add(c);const ping=setInterval(()=>{try{res.write(': ping\n\n')}catch{}},25000);
+  const c={res,org:user.org,profile,user};clients.add(c);const ping=setInterval(()=>{try{res.write(': ping\n\n')}catch{}},25000);
   req.on('close',()=>{clearInterval(ping);clients.delete(c)});return;
  }
  return send(res,404,{error:'Not found'});

@@ -52,11 +52,15 @@ The temporary password is printed once; you must change it at first sign-in.
 Administrators can watch regulator and law-firm feeds (RSS 2.0 or Atom) from **Regulatory change > Feed inbox > Sources**. The server fetches each feed on its own interval (15 minutes to 24 hours, default 6 hours), scores every new item for relevance to the frameworks your organisation has adopted, and lists them in the inbox. People can mark items triaged or dismissed, or convert one into a Regulatory change record (it is written through the same shared-state path as other edits, so it appears for everyone and is in the audit trail).
 
 - Up to 20 feeds per workspace. Only administrators add or remove feeds; auditors can read but not change items.
-- Safety: https only, 15 second timeout, 2 MB limit, at most 3 redirects, no DOCTYPE or entity processing, and feeds on private, loopback, link-local or cloud-metadata addresses are refused (checked on every redirect).
+- Safety: https only, 15 second timeout, 2 MB limit, at most 3 redirects, no DOCTYPE or entity processing, and feeds on private, loopback, link-local or cloud-metadata addresses are refused. The address is validated by the connection's own DNS lookup and pinned, on every redirect, so a name that changes its answer cannot reach internal hosts.
 - Relevance (0 to 100) is rule-based and explained on each item: framework code or name mentioned, issuer named, theme keywords (privacy, cyber, outsourcing, KYC and so on), generic regulatory words (circular, direction, amendment, deadline), plus a boost when you have adopted the matched framework. It is a triage aid, not a legal assessment.
 - Errors per feed (unreachable, not a feed, too large) show on the Sources tab and never affect the rest of the server.
 - `server/regfeed-sources.json` is a catalogue of suggested sources. Its addresses came from web searches and were not tested; confirm each works before relying on it. Several regulators publish no feed, so they are listed as web pages and need a feed address from you.
 - Feed data is stored in the `reg_feeds` and `reg_items` tables of the same database and is included in backups.
+
+## Reminders
+
+Review, attestation and e-signature reminders recorded in the app become notifications on the server: the person sees them in the bell, and they are sent to `FORGE_WEBHOOK_URL` and as email (`FORGE_SMTP_URL` or `FORGE_MAIL_WEBHOOK`) like other notifications. Only the record owner, the requester or an administrator can trigger them; people who have no account (outside signers) are emailed a reminder without the link when SMTP is configured.
 
 ## Pages people use without signing in
 

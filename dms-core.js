@@ -68,7 +68,8 @@ async function store(doc,n,r){
 
 // ---------------------------------------------------------------- access
 const isAdmin=()=>me().role==='Administrator';
-const canView=d=>!d||d.conf!=='Restricted'||isAdmin()||me().role==='Auditor'||d.owner===me().name||(d.shared||[]).includes(me().name);
+const accessOf=d=>[...(Array.isArray(d.access)?d.access:[]),...(Array.isArray(d.shared)?d.shared:[])];// same rule as server/confidential.js: Restricted = administrators, owner, creator, access list (auditors only when named)
+const canView=d=>!d||d.conf!=='Restricted'||isAdmin()||d.owner===me().name||d.createdBy===me().name||accessOf(d).includes(me().name);
 const canEdit=d=>!!d&&me().role!=='Auditor'&&(isAdmin()||d.owner===me().name||(d.shared||[]).includes(me().name))&&!d.sig;
 const find=id=>coll('dmsDocs').find(d=>d.id===id);
 const ver=(d,n)=>d&&(d.versions||[]).find(v=>v.n===(n||d.cur));

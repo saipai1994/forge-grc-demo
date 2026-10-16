@@ -2,7 +2,7 @@
 // relevance to the organisation's adopted frameworks, keep an inbox, and convert items into Regulatory
 // change records. No dependencies. server.js wires it in with a few lines (see "regfeed" there).
 'use strict';
-const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),dns=require('node:dns').promises,net=require('node:net'),crypto=require('node:crypto');
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),dns=require('node:dns').promises,dnsCb=require('node:dns'),net=require('node:net'),http=require('node:http'),https=require('node:https'),crypto=require('node:crypto');
 
 const MAX_ITEMS=200,MAX_TEXT=4000,MAX_BODY=2*1024*1024,MAX_REDIRECTS=3,TIMEOUT_MS=15000,MAX_FEEDS=20,MAX_DEPTH=64;
 const env=k=>process.env[k]==='1';
@@ -88,40 +88,86 @@ function parseFeed(xml){
  return{format,title,items}}
 
 // ------------------------------------------------------------------ SSRF guard and fetch
+// The 16 bytes of an IPv6 address (null if it is not one). The URL parser normalises every spelling first
+// (::ffff:127.0.0.1 and ::ffff:7f00:1 both come out as ::ffff:7f00:1), so the groups are plain hex.
+function v6bytes(addr){
+ let h;try{h=new URL('http://['+String(addr).replace(/%.*$/,'')+']/').hostname.slice(1,-1)}catch{return null}
+ const [a,b]=h.split('::'),A=a?a.split(':'):[],B=b?b.split(':'):[];
+ const g=b===undefined?A:[...A,...Array(8-A.length-B.length).fill('0'),...B];if(g.length!==8)return null;
+ const out=[];for(const x of g){const n=parseInt(x,16);if(!(n>=0&&n<=0xffff))return null;out.push(n>>8,n&255)}return out}
 function blockedAddress(addr){
+ addr=String(addr);
  if(net.isIPv4(addr)){const [a,b,c]=addr.split('.').map(Number);
   return a===0||a===10||a===127||(a===100&&b>=64&&b<=127)||(a===169&&b===254)||(a===172&&b>=16&&b<=31)||(a===192&&b===0&&c===0)||(a===192&&b===168)||(a===198&&(b===18||b===19))||a>=224}
- if(net.isIPv6(addr)){const x=addr.toLowerCase();
-  const m4=/^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(x)||/^64:ff9b::(\d+\.\d+\.\d+\.\d+)$/.exec(x);if(m4)return blockedAddress(m4[1]);
-  const hx=/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(x);if(hx){const h=parseInt(hx[1],16),l=parseInt(hx[2],16);return blockedAddress([h>>8,h&255,l>>8,l&255].join('.'))}
-  return x==='::'||x==='::1'||/^f[cd]/.test(x)||/^fe[89ab]/.test(x)||/^ff/.test(x)}
+ if(net.isIPv6(addr)){const x=v6bytes(addr);if(!x)return true;
+  const v4=o=>blockedAddress(x.slice(o,o+4).join('.')),zero=n=>x.slice(0,n).every(y=>y===0);
+  if(zero(10)&&x[10]===255&&x[11]===255)return v4(12); // IPv4-mapped ::ffff:a.b.c.d
+  if(zero(12))return true; // ::, ::1 and the deprecated IPv4-compatible form
+  if(x[0]===0&&x[1]===0x64&&x[2]===0xff&&x[3]===0x9b&&x.slice(4,12).every(y=>y===0))return v4(12); // NAT64 64:ff9b::/96
+  if(x[0]===0x20&&x[1]===0x02)return v4(2); // 6to4 2002::/16 embeds an IPv4 address
+  return (x[0]&0xfe)===0xfc||(x[0]===0xfe&&(x[1]&0xc0)===0x80)||(x[0]===0xfe&&(x[1]&0xc0)===0xc0)||x[0]===0xff} // fc00::/7, fe80::/10, fec0::/10, ff00::/8
  return true}
-async function checkUrl(u){
+// Testing hook: replace DNS resolution (callback style, like dns.lookup).
+const _hooks={resolve:null,request:null};
+// The connection's own name lookup. http(s).request calls this to find the address to connect to, and connects to exactly
+// what it returns, so the address that was checked is the address that is used. A name that re-resolves to a private
+// address between a check and a connect (DNS rebinding) cannot get through. IP-literal hosts skip the lookup and are
+// checked in parseTarget.
+function safeLookup(hostname,options,cb){
+ if(typeof options==='function'){cb=options;options={}}options=options||{};
+ (_hooks.resolve||dnsCb.lookup)(hostname,{all:true,family:options.family||0,hints:options.hints},(err,addrs)=>{
+  if(err)return cb(err);
+  if(!Array.isArray(addrs))addrs=[{address:addrs,family:net.isIPv6(addrs)?6:4}];
+  if(!addrs.length)return cb(Object.assign(new Error('The host name could not be resolved'),{code:'ENOTFOUND'}));
+  if(!env('FORGE_FEED_ALLOW_PRIVATE')&&addrs.some(a=>blockedAddress(a.address)))return cb(Object.assign(new Error('Address refused: feeds on private, loopback, link-local or metadata addresses are not allowed'),{code:'FORGE_BLOCKED'}));
+  if(options.all)return cb(null,addrs);
+  cb(null,addrs[0].address,addrs[0].family||(net.isIPv6(addrs[0].address)?6:4))})}
+// Everything that can be decided without the network: scheme, credentials, IP-literal hosts.
+function parseTarget(u){
  let url;try{url=new URL(u)}catch{throw new Error('That is not a valid web address')}
  if(url.protocol!=='https:'&&!(url.protocol==='http:'&&env('FORGE_FEED_ALLOW_HTTP')))throw new Error('Only https:// feed addresses are allowed');
  if(url.username||url.password)throw new Error('Feed addresses must not contain a user name or password');
  const host=url.hostname.replace(/^\[|\]$/g,'');
+ if(net.isIP(host)&&!env('FORGE_FEED_ALLOW_PRIVATE')&&blockedAddress(host))throw new Error('Address refused: feeds on private, loopback, link-local or metadata addresses are not allowed');
+ return url}
+// Early, friendly validation when a feed is added. It is NOT the security boundary (a name can change its answer later):
+// fetchFeed connects only through safeLookup, which checks the address it actually connects to.
+async function checkUrl(u){
+ const url=parseTarget(u);
+ const host=url.hostname.replace(/^\[|\]$/g,'');
  let addrs;try{addrs=net.isIP(host)?[{address:host}]:await dns.lookup(host,{all:true})}catch{throw new Error('The host name could not be resolved')}
  if(!env('FORGE_FEED_ALLOW_PRIVATE')&&addrs.some(a=>blockedAddress(a.address)))throw new Error('Address refused: feeds on private, loopback, link-local or metadata addresses are not allowed');
  return url}
-async function readCapped(res){
- const cl=+res.headers.get('content-length');if(cl>MAX_BODY)throw new Error('Feed is larger than 2 MB');
- const chunks=[];let n=0;const rd=res.body.getReader();
- for(;;){const {done,value}=await rd.read();if(done)break;n+=value.length;if(n>MAX_BODY){try{await rd.cancel()}catch{}throw new Error('Feed is larger than 2 MB')}chunks.push(value)}
- const buf=Buffer.concat(chunks);let enc='utf-8';const m=/^<\?xml[^>]*encoding=["']([\w-]+)["']/i.exec(buf.subarray(0,200).toString('latin1'));
- if(m){try{new TextDecoder(m[1]);enc=m[1]}catch{}}
- return new TextDecoder(enc).decode(buf)}
-// cond: {etag,lastModified}. Returns {notModified:true} or {xml,etag,lastModified}.
+function readCapped(res){
+ return new Promise((ok,no)=>{
+  const cl=+res.headers['content-length'];if(cl>MAX_BODY){res.destroy();return no(new Error('Feed is larger than 2 MB'))}
+  const chunks=[];let n=0,done=false;
+  res.on('data',d=>{if(done)return;n+=d.length;if(n>MAX_BODY){done=true;res.destroy();return no(new Error('Feed is larger than 2 MB'))}chunks.push(d)});
+  res.on('error',e=>{if(!done){done=true;no(e)}});
+  res.on('end',()=>{if(done)return;done=true;
+   const buf=Buffer.concat(chunks);let enc='utf-8';const m=/^<\?xml[^>]*encoding=["']([\w-]+)["']/i.exec(buf.subarray(0,200).toString('latin1'));
+   if(m){try{new TextDecoder(m[1]);enc=m[1]}catch{}}
+   ok(new TextDecoder(enc).decode(buf))})})}
+// One request, no redirects followed, connecting only through safeLookup. Resolves with the IncomingMessage.
+function requestOnce(url,headers,signal){
+ if(_hooks.request)return _hooks.request(url,headers,signal);
+ return new Promise((ok,no)=>{
+  const mod=url.protocol==='https:'?https:http;
+  const req=mod.request(url,{method:'GET',headers,lookup:safeLookup,agent:false,signal},ok);
+  req.on('error',e=>no(e.code==='FORGE_BLOCKED'?e:e.name==='AbortError'||e.code==='ABORT_ERR'?new Error('The feed took too long to answer'):e.code==='ENOTFOUND'||e.code==='EAI_AGAIN'?new Error('The host name could not be resolved'):e));
+  req.end()})}
+// cond: {etag,lastModified}. Returns {notModified:true} or {xml,etag,lastModified}. Every hop (the first address and each
+// redirect) is parsed and then connected through safeLookup, so each one is validated at connect time.
 async function fetchFeed(u,cond){
  let cur=u;const signal=AbortSignal.timeout(TIMEOUT_MS);
  for(let hop=0;hop<=MAX_REDIRECTS;hop++){
-  const url=await checkUrl(cur),h={'user-agent':'ForgeGRC-RegFeed/1','accept':'application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5'};
+  const url=parseTarget(cur),h={'user-agent':'ForgeGRC-RegFeed/1','accept':'application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5'};
   if(cond&&cond.etag)h['if-none-match']=cond.etag;if(cond&&cond.lastModified)h['if-modified-since']=cond.lastModified;
-  const res=await fetch(url,{headers:h,redirect:'manual',signal});
-  if(res.status>=300&&res.status<400&&res.headers.get('location')){if(hop===MAX_REDIRECTS)throw new Error('Too many redirects');cur=new URL(res.headers.get('location'),url).href;try{await res.body.cancel()}catch{}continue}
-  if(res.status===304)return{notModified:true};
-  if(!res.ok){try{await res.body.cancel()}catch{}throw new Error('The server answered '+res.status)}
-  return{xml:await readCapped(res),etag:res.headers.get('etag')||'',lastModified:res.headers.get('last-modified')||''}}
+  const res=await requestOnce(url,h,signal),code=res.statusCode,loc=res.headers.location;
+  if(code>=300&&code<400&&loc){res.resume();if(hop===MAX_REDIRECTS)throw new Error('Too many redirects');cur=new URL(loc,url).href;continue}
+  if(code===304){res.resume();return{notModified:true}}
+  if(!(code>=200&&code<300)){res.resume();throw new Error('The server answered '+code)}
+  return{xml:await readCapped(res),etag:res.headers.etag||'',lastModified:res.headers['last-modified']||''}}
  throw new Error('Too many redirects')}
 
 // ------------------------------------------------------------------ relevance scoring (explainable, no ML)
@@ -293,4 +339,4 @@ async function route(req,res,url,user){
   return send(res,200,{ok:true,id:fid,record:{...rec,id:fid}})}
  return send(res,404,{error:'Not found'})}
 
-module.exports={init,route,startScheduler,tick,refreshFeed,parseFeed,fetchFeed,checkUrl,blockedAddress,scoreItem,loadLibrary,MAX_ITEMS,MAX_TEXT,MAX_FEEDS};
+module.exports={init,route,startScheduler,tick,refreshFeed,parseFeed,fetchFeed,checkUrl,parseTarget,safeLookup,blockedAddress,_hooks,scoreItem,loadLibrary,MAX_ITEMS,MAX_TEXT,MAX_FEEDS};
