@@ -100,32 +100,43 @@ function replaceState(server){
  const S=G.S(),log=S.log||[];for(const k of Object.keys(S))delete S[k];Object.assign(S,server);S.log=log;
  G.ensure();base=snap();
 }
-async function pull(){
+// A full pull replaces local data, so first wait for any save already in flight (its result decides
+// what is "unsaved"), then take the server copy and put back every change not yet acknowledged
+// (diff of local data against the last acknowledged copy). Those changes are then pushed as usual.
+// inPush is true when called from push() itself, which holds the busy flag.
+let flight=null;
+async function pull(inPush){
+ while(busy&&!inPush&&flight)await flight.catch(()=>{});
  const r=await call('GET','/api/state?profile='+PROF);if(!r.ok)throw new Error(r.data.error||'Could not load data');
  if(!r.data.state){const mine=snap();const i=await call('POST','/api/init',{profile:PROF,state:mine});if(!i.ok){toast(i.data.error||'This workspace has not been started yet.');base=mine;rev=0;return}r.data=i.data}
- rev=r.data.rev;replaceState(r.data.state);G.renderAll();try{render()}catch{}
+ if(busy&&!inPush){return pull()} // a save started while we were fetching: its outcome is unknown, so fetch again
+ const pending=base?SY.diff(base,snap()):[]; // taken in the same tick as the replace, nothing can slip in between
+ rev=r.data.rev;replaceState(r.data.state);
+ if(pending.length){const S=G.S();pending.forEach(o=>SY.apply(S,o))}
+ G.renderAll();try{render()}catch{}
+ if(pending.length){G.save()}
+ if(G.UI.drawer)onDrawer(G.UI.drawer); // a re-render may have rebuilt the open record; restore its files
 }
 let resyncNeeded=false;
-// Take the server's copy, then put back anything typed since the last save.
-async function resync(sent){const late=SY.diff(sent,snap());await pull();if(late.length){const S=G.S();late.forEach(o=>SY.apply(S,o));G.save()}}
+async function resync(){await pull(true)}
 function schedule(){if(!connected)return;clearTimeout(timer);timer=setTimeout(push,250)}
 async function push(){
  if(!connected)return;if(busy){dirty=true;return}
  const cur=snap(),ops=SY.diff(base,cur);if(!ops.length)return;
- busy=true;
+ busy=true;let done;flight=new Promise(r=>done=r);
  try{
   const r=await call('POST','/api/ops',{profile:PROF,ops});
   if(!r.ok){toast(r.data.error||'Could not save to the server.');throw new Error('save failed')}
   const ren=r.data.renames||{},S=G.S();
   if(r.data.seq&&S.seq)for(const k in r.data.seq)if(S.seq[k]<r.data.seq[k])S.seq[k]=r.data.seq[k];
   base=cur;rev=r.data.rev||rev;
-  if(r.data.denied){toast(`Your role cannot change: ${(r.data.deniedPaths||[]).join(', ')}. Reloading shared data.`);await resync(cur)}
-  else if(Object.keys(ren).length||resyncNeeded){resyncNeeded=false;Object.keys(ren).forEach(o=>toast(`${o} was already taken, so this record is now ${ren[o]}.`));await resync(cur)}
+  if(r.data.denied){toast(`Your role cannot change: ${(r.data.deniedPaths||[]).join(', ')}. Reloading shared data.`);await resync()}
+  else if(Object.keys(ren).length||resyncNeeded){resyncNeeded=false;Object.keys(ren).forEach(o=>toast(`${o} was already taken, so this record is now ${ren[o]}.`));await resync()}
   refreshTrail();
  }catch(e){console.warn(e);setTimeout(()=>{if(connected)push()},5000)}
- finally{busy=false;if(dirty){dirty=false;schedule()}}
+ finally{busy=false;done();if(dirty){dirty=false;schedule()}}
 }
-G.onSave=schedule;
+G.onSave=schedule;G.pullNow=()=>pull(); // used by tests/live-pull.js
 
 // ---- live updates from other people and from connected systems ----
 const AREA={issues:'issue',controls:'control',kris:'indicator',losses:'loss event',policies:'policy',vendors:'vendor',tests:'control test',appetite:'risk appetite'};
@@ -135,7 +146,7 @@ function describe(msg){const ops=msg.ops;if(!ops.length)return '';const o=ops[0]
 function startEvents(){
  if(es)es.close();let first=true;
  es=new EventSource(`${API}/api/events?profile=${encodeURIComponent(PROF)}&token=${encodeURIComponent(token)}`);
- es.onopen=()=>{if(!first&&!busy&&!SY.diff(base,snap()).length)pull().catch(()=>{});first=false;const d=document.getElementById('gcDot');if(d)d.style.background='#2e9d6f'};
+ es.onopen=()=>{pull().catch(()=>{});loadNotes();first=false;const d=document.getElementById('gcDot');if(d)d.style.background='#2e9d6f'};
  es.onerror=()=>{const d=document.getElementById('gcDot');if(d)d.style.background='#c9a13b'};
  es.onmessage=ev=>{let msg;try{msg=JSON.parse(ev.data)}catch{return}
   if(msg.type==='note'){onNote(msg.note);return}
