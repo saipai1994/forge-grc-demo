@@ -105,17 +105,17 @@ function replaceState(server){
 // (diff of local data against the last acknowledged copy). Those changes are then pushed as usual.
 // inPush is true when called from push() itself, which holds the busy flag.
 let flight=null;
-async function pull(inPush){
+async function pull(inPush,ifNewer){
  while(busy&&!inPush&&flight)await flight.catch(()=>{});
  const r=await call('GET','/api/state?profile='+PROF);if(!r.ok)throw new Error(r.data.error||'Could not load data');
  if(!r.data.state){const mine=snap();const i=await call('POST','/api/init',{profile:PROF,state:mine});if(!i.ok){toast(i.data.error||'This workspace has not been started yet.');base=mine;rev=0;return}r.data=i.data}
- if(busy&&!inPush){return pull()} // a save started while we were fetching: its outcome is unknown, so fetch again
+ if(ifNewer&&r.data.rev===rev&&!busy)return; // nothing missed, leave the screen alone
+ if(busy&&!inPush){return pull(false,ifNewer)} // a save started while we were fetching: its outcome is unknown, so fetch again
  const pending=base?SY.diff(base,snap()):[]; // taken in the same tick as the replace, nothing can slip in between
  rev=r.data.rev;replaceState(r.data.state);
  if(pending.length){const S=G.S();pending.forEach(o=>SY.apply(S,o))}
  G.renderAll();try{render()}catch{}
  if(pending.length){G.save()}
- if(G.UI.drawer)onDrawer(G.UI.drawer); // a re-render may have rebuilt the open record; restore its files
 }
 let resyncNeeded=false;
 async function resync(){await pull(true)}
@@ -146,7 +146,7 @@ function describe(msg){const ops=msg.ops;if(!ops.length)return '';const o=ops[0]
 function startEvents(){
  if(es)es.close();let first=true;
  es=new EventSource(`${API}/api/events?profile=${encodeURIComponent(PROF)}&token=${encodeURIComponent(token)}`);
- es.onopen=()=>{pull().catch(()=>{});loadNotes();first=false;const d=document.getElementById('gcDot');if(d)d.style.background='#2e9d6f'};
+ es.onopen=()=>{pull(false,true).catch(()=>{});loadNotes();first=false;const d=document.getElementById('gcDot');if(d)d.style.background='#2e9d6f'};
  es.onerror=()=>{const d=document.getElementById('gcDot');if(d)d.style.background='#c9a13b'};
  es.onmessage=ev=>{let msg;try{msg=JSON.parse(ev.data)}catch{return}
   if(msg.type==='note'){onNote(msg.note);return}
